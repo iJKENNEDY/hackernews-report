@@ -4,7 +4,9 @@ from flask import Flask, render_template, request, jsonify
 from src.database import Database
 from src.models import Category
 from src.config import DB_PATH
+from src.tags import TagSystem
 from datetime import datetime
+from collections import Counter
 import os
 
 
@@ -28,10 +30,28 @@ def get_database():
     return db
 
 
+def get_tag_statistics(posts):
+    """
+    Get statistics about tags from a list of posts.
+    
+    Args:
+        posts: List of Post objects
+        
+    Returns:
+        Dictionary mapping tag names to counts
+    """
+    tag_counter = Counter()
+    for post in posts:
+        for tag in post.tags:
+            tag_counter[tag] += 1
+    return dict(tag_counter.most_common())
+
+
 @app.route('/')
 def index():
     """Main page showing all posts."""
     category_filter = request.args.get('category', None)
+    tag_filter = request.args.get('tag', None)
     
     db = get_database()
     
@@ -45,8 +65,18 @@ def index():
     else:
         posts = db.get_posts_by_category(order_by='created_desc')
     
+    # Filter by tag if specified
+    if tag_filter:
+        posts = [p for p in posts if tag_filter in p.tags]
+    
     # Get category statistics
     stats = db.get_category_counts()
+    
+    # Get tag statistics
+    tag_stats = get_tag_statistics(posts)
+    
+    # Get all available tags
+    all_tags = TagSystem.get_all_tags()
     
     db.close()
     
@@ -54,7 +84,10 @@ def index():
         'index.html',
         posts=posts,
         stats=stats,
-        current_category=category_filter or 'all'
+        tag_stats=tag_stats,
+        all_tags=all_tags,
+        current_category=category_filter or 'all',
+        current_tag=tag_filter
     )
 
 
@@ -62,6 +95,7 @@ def index():
 def api_posts():
     """API endpoint to get posts as JSON."""
     category_filter = request.args.get('category', None)
+    tag_filter = request.args.get('tag', None)
     limit = request.args.get('limit', 100, type=int)
     
     db = get_database()
@@ -76,6 +110,10 @@ def api_posts():
     else:
         posts = db.get_posts_by_category(order_by='created_desc')
     
+    # Filter by tag if specified
+    if tag_filter:
+        posts = [p for p in posts if tag_filter in p.tags]
+    
     # Limit results
     posts = posts[:limit]
     
@@ -88,6 +126,17 @@ def api_posts():
         'posts': posts_data,
         'count': len(posts_data)
     })
+
+
+@app.route('/api/tags')
+def api_tags():
+    """API endpoint to get tag statistics."""
+    db = get_database()
+    posts = db.get_posts_by_category(order_by='created_desc')
+    tag_stats = get_tag_statistics(posts)
+    db.close()
+    
+    return jsonify(tag_stats)
 
 
 @app.route('/api/stats')

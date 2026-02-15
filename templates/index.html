@@ -31,6 +31,17 @@
             <span class="category-count">{{ stats.get('other', 0) }}</span>
         </a>
     </div>
+
+    {% if tag_stats %}
+    <h2 style="margin-top: 30px;">Popular Tags</h2>
+    <div class="tag-cloud">
+        {% for tag, count in tag_stats.items()[:15] %}
+        <a href="/?tag={{ tag }}" class="tag-item {% if current_tag == tag %}active{% endif %}">
+            {{ tag }} <span class="tag-count">({{ count }})</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 
 <div class="main-content">
@@ -74,6 +85,14 @@
                     <span class="post-author">by {{ post.author }}</span>
                     <span class="post-date">{{ post.created_at|timestamp_to_date }}</span>
                 </div>
+                
+                {% if post.tags %}
+                <div class="post-tags">
+                    {% for tag in post.tags %}
+                    <a href="/?tag={{ tag }}" class="post-tag">{{ tag }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 
                 {% if post.url %}
                 <div class="post-url">

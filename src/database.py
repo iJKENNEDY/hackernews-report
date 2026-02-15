@@ -62,7 +62,8 @@ class Database:
                 created_at INTEGER NOT NULL,
                 type TEXT NOT NULL,
                 category TEXT NOT NULL,
-                fetched_at INTEGER NOT NULL
+                fetched_at INTEGER NOT NULL,
+                tags TEXT DEFAULT ''
             )
         """)
         
@@ -134,9 +135,12 @@ class Database:
             conn = self._get_connection()
             cursor = conn.cursor()
             
+            # Convert tags list to comma-separated string
+            tags_str = ','.join(post.tags) if post.tags else ''
+            
             cursor.execute("""
-                INSERT INTO posts (id, title, author, score, url, created_at, type, category, fetched_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO posts (id, title, author, score, url, created_at, type, category, fetched_at, tags)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 post.id,
                 post.title,
@@ -147,6 +151,7 @@ class Database:
                 post.type,
                 post.category.value,
                 post.fetched_at,
+                tags_str,
             ))
             
             conn.commit()
@@ -171,10 +176,13 @@ class Database:
             conn = self._get_connection()
             cursor = conn.cursor()
             
+            # Convert tags list to comma-separated string
+            tags_str = ','.join(post.tags) if post.tags else ''
+            
             cursor.execute("""
                 UPDATE posts
                 SET title = ?, author = ?, score = ?, url = ?, 
-                    created_at = ?, type = ?, category = ?, fetched_at = ?
+                    created_at = ?, type = ?, category = ?, fetched_at = ?, tags = ?
                 WHERE id = ?
             """, (
                 post.title,
@@ -185,6 +193,7 @@ class Database:
                 post.type,
                 post.category.value,
                 post.fetched_at,
+                tags_str,
                 post.id,
             ))
             

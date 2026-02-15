@@ -31,6 +31,17 @@
             </div>
         </div>
         
+        {% if post.tags %}
+        <div class="post-detail-tags">
+            <span class="meta-label">Topics:</span>
+            <div class="post-tags">
+                {% for tag in post.tags %}
+                <a href="/?tag={{ tag }}" class="post-tag">{{ tag }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
         {% if post.url %}
         <div class="post-detail-url">
             <a href="{{ post.url }}" target="_blank" rel="noopener" class="external-link-button">

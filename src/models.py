@@ -1,8 +1,8 @@
 """Data models for Hackernews Report application."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 import time
 
 
@@ -49,6 +49,7 @@ class Post:
         type: Post type (story, job, ask, poll, etc.)
         category: Categorized type as Category enum
         fetched_at: Unix timestamp when the post was fetched from API
+        tags: List of topic tags (AI, Python, Science, etc.)
     """
     id: int
     title: str
@@ -59,6 +60,7 @@ class Post:
     type: str
     category: Category
     fetched_at: int
+    tags: List[str] = field(default_factory=list)
     
     def is_valid(self) -> bool:
         """
@@ -107,6 +109,7 @@ class Post:
             "type": self.type,
             "category": self.category.value,
             "fetched_at": self.fetched_at,
+            "tags": self.tags,
         }
     
     @staticmethod
@@ -124,6 +127,8 @@ class Post:
             KeyError: If required fields are missing
             ValueError: If data types are invalid
         """
+        from src.tags import TagSystem
+        
         # Extract required fields
         post_id = data["id"]
         title = data.get("title", "")
@@ -135,6 +140,9 @@ class Post:
         
         # Categorize the post
         category = categorize_post(post_type)
+        
+        # Extract tags from title
+        tags = TagSystem.extract_tags(title)
         
         # Current timestamp for fetched_at
         fetched_at = int(time.time())
@@ -149,6 +157,7 @@ class Post:
             type=post_type,
             category=category,
             fetched_at=fetched_at,
+            tags=tags,
         )
     
     @staticmethod
@@ -158,14 +167,23 @@ class Post:
         
         Args:
             row: Tuple containing database row values in order:
-                 (id, title, author, score, url, created_at, type, category, fetched_at)
+                 (id, title, author, score, url, created_at, type, category, fetched_at, tags)
                  
         Returns:
             Post instance created from the database row
         """
-        # Unpack the row tuple
-        (post_id, title, author, score, url, created_at, 
-         post_type, category_str, fetched_at) = row
+        # Unpack the row tuple (handle both old and new schema)
+        if len(row) == 9:
+            # Old schema without tags
+            (post_id, title, author, score, url, created_at, 
+             post_type, category_str, fetched_at) = row
+            tags = []
+        else:
+            # New schema with tags
+            (post_id, title, author, score, url, created_at, 
+             post_type, category_str, fetched_at, tags_str) = row
+            # Parse tags from comma-separated string
+            tags = tags_str.split(',') if tags_str else []
         
         # Convert category string back to enum
         category = Category(category_str)
@@ -180,4 +198,5 @@ class Post:
             type=post_type,
             category=category,
             fetched_at=fetched_at,
+            tags=tags,
         )
