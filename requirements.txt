@@ -5,3 +5,6 @@ pytest>=7.4.0
 
 # Additional testing utilities
 pytest-cov>=4.1.0
+
+# Web UI dependencies
+flask==3.0.0

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - Hacker News Report{% endblock %}
+
+{% block content %}
+<div class="post-detail">
+    <a href="/" class="back-link">← Back to all posts</a>
+    
+    <article class="post-detail-card">
+        <header class="post-detail-header">
+            <h1 class="post-detail-title">{{ post.title }}</h1>
+            <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
+        </header>
+        
+        <div class="post-detail-meta">
+            <div class="meta-item">
+                <span class="meta-label">Score:</span>
+                <span class="meta-value">⬆ {{ post.score }} points</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Author:</span>
+                <span class="meta-value">{{ post.author }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Posted:</span>
+                <span class="meta-value">{{ post.created_at|timestamp_to_date }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Type:</span>
+                <span class="meta-value">{{ post.type }}</span>
+            </div>
+        </div>
+        
+        {% if post.url %}
+        <div class="post-detail-url">
+            <a href="{{ post.url }}" target="_blank" rel="noopener" class="external-link-button">
+                Visit External Link ↗
+            </a>
+            <p class="url-text">{{ post.url }}</p>
+        </div>
+        {% endif %}
+        
+        <div class="post-detail-actions">
+            <a href="https://news.ycombinator.com/item?id={{ post.id }}" target="_blank" rel="noopener" class="hn-link">
+                View on Hacker News
+            </a>
+        </div>
+    </article>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Hacker News Report - Home{% endblock %}
+
+{% block content %}
+<div class="sidebar">
+    <h2>Categories</h2>
+    <div class="category-list">
+        <a href="/" class="category-item {% if current_category == 'all' %}active{% endif %}">
+            <span class="category-name">All Posts</span>
+            <span class="category-count">{{ stats.values()|sum if stats else 0 }}</span>
+        </a>
+        <a href="/?category=story" class="category-item {% if current_category == 'story' %}active{% endif %}">
+            <span class="category-name">📖 Stories</span>
+            <span class="category-count">{{ stats.get('story', 0) }}</span>
+        </a>
+        <a href="/?category=job" class="category-item {% if current_category == 'job' %}active{% endif %}">
+            <span class="category-name">💼 Jobs</span>
+            <span class="category-count">{{ stats.get('job', 0) }}</span>
+        </a>
+        <a href="/?category=ask" class="category-item {% if current_category == 'ask' %}active{% endif %}">
+            <span class="category-name">❓ Ask HN</span>
+            <span class="category-count">{{ stats.get('ask', 0) }}</span>
+        </a>
+        <a href="/?category=poll" class="category-item {% if current_category == 'poll' %}active{% endif %}">
+            <span class="category-name">📊 Polls</span>
+            <span class="category-count">{{ stats.get('poll', 0) }}</span>
+        </a>
+        <a href="/?category=other" class="category-item {% if current_category == 'other' %}active{% endif %}">
+            <span class="category-name">📝 Other</span>
+            <span class="category-count">{{ stats.get('other', 0) }}</span>
+        </a>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="header-section">
+        <h2>
+            {% if current_category == 'all' %}
+                All Posts
+            {% elif current_category == 'story' %}
+                Stories
+            {% elif current_category == 'job' %}
+                Job Postings
+            {% elif current_category == 'ask' %}
+                Ask HN
+            {% elif current_category == 'poll' %}
+                Polls
+            {% else %}
+                Other Posts
+            {% endif %}
+        </h2>
+        <p class="post-count">{{ posts|length }} posts</p>
+    </div>
+
+    {% if posts %}
+        <div class="posts-list">
+            {% for post in posts %}
+            <article class="post-card">
+                <div class="post-header">
+                    <h3 class="post-title">
+                        {% if post.url %}
+                            <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.title }}</a>
+                            <span class="external-link">↗</span>
+                        {% else %}
+                            <a href="/post/{{ post.id }}">{{ post.title }}</a>
+                        {% endif %}
+                    </h3>
+                    <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
+                </div>
+                
+                <div class="post-meta">
+                    <span class="post-score">⬆ {{ post.score }} points</span>
+                    <span class="post-author">by {{ post.author }}</span>
+                    <span class="post-date">{{ post.created_at|timestamp_to_date }}</span>
+                </div>
+                
+                {% if post.url %}
+                <div class="post-url">
+                    <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.url|truncate(60) }}</a>
+                </div>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h3>No posts found</h3>
+            <p>Try fetching posts using the CLI:</p>
+            <code>python -m src fetch --limit 30</code>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
