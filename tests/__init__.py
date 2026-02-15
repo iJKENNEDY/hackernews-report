@@ -1,0 +1,1 @@
+"""Tests para Hackernews Report."""
