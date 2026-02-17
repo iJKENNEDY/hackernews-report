@@ -4,6 +4,24 @@
 
 Este documento especifica los requisitos para una aplicación que obtiene, categoriza y visualiza posts de Hacker News. La aplicación permitirá a los usuarios consultar posts de Hacker News, organizarlos por categorías y almacenarlos localmente en una base de datos SQLite para consultas posteriores.
 
+## Alcance
+
+### En Alcance
+- Obtención de posts desde la API pública de Hacker News
+- Almacenamiento local en base de datos SQLite
+- Categorización automática de posts por tipo
+- Visualización de posts en formato de lista mediante CLI
+- Sincronización y actualización de datos
+- Manejo robusto de errores y reintentos
+
+### Fuera de Alcance
+- Interfaz gráfica de usuario (GUI)
+- Autenticación de usuarios de Hacker News
+- Publicación o creación de posts
+- Gestión de comentarios anidados
+- Sincronización en tiempo real
+- Soporte para múltiples usuarios concurrentes
+
 ## Glosario
 
 - **Sistema**: La aplicación completa de reporte de Hacker News
