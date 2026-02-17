@@ -7,6 +7,10 @@ from src.config import DB_PATH, API_BASE_URL, LOG_LEVEL
 from src.database import Database
 from src.api_client import HNApiClient
 from src.service import HackerNewsService
+from src.search_engine import SearchEngine
+from src.tags import TagSystem
+from src.search_service import SearchService
+from src.report_service import ReportService
 from src.cli import CLI
 
 
@@ -49,6 +53,19 @@ def main() -> int:
         database.initialize_schema()
         logger.info(f"Database initialized at {DB_PATH}")
         
+        # Initialize search components
+        search_engine = SearchEngine(database=database)
+        search_engine.create_search_indices()
+        logger.info("Search indices created")
+        
+        tag_system = TagSystem()
+        search_service = SearchService(search_engine=search_engine, tag_system=tag_system)
+        logger.info("Search service initialized")
+        
+        # Initialize Report Service
+        report_service = ReportService(search_service=search_service)
+        logger.info("Report service initialized")
+        
         # Initialize API client
         api_client = HNApiClient(base_url=API_BASE_URL)
         logger.info(f"API client initialized with base URL: {API_BASE_URL}")
@@ -58,7 +75,7 @@ def main() -> int:
         logger.info("Service layer initialized")
         
         # Initialize and run CLI
-        cli = CLI(service=service)
+        cli = CLI(service=service, search_service=search_service, report_service=report_service)
         exit_code = cli.run(sys.argv[1:])
         
         # Cleanup

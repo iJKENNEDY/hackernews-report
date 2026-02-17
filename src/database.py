@@ -83,6 +83,32 @@ class Database:
             ON posts(created_at DESC)
         """)
         
+        # Create search indices for optimized search queries
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_posts_title_lower 
+            ON posts(LOWER(title))
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_posts_author_lower 
+            ON posts(LOWER(author))
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_posts_tags 
+            ON posts(tags)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_posts_score 
+            ON posts(score)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_posts_score_created 
+            ON posts(score DESC, created_at DESC)
+        """)
+        
         conn.commit()
     
     @contextmanager

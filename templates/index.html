@@ -35,79 +35,134 @@
     {% if tag_stats %}
     <h2 style="margin-top: 30px;">Popular Tags</h2>
     <div class="tag-cloud">
-        {% for tag, count in tag_stats.items()[:15] %}
+        {% for tag, count in (tag_stats.items()|list)[:15] %}
         <a href="/?tag={{ tag }}" class="tag-item {% if current_tag == tag %}active{% endif %}">
             {{ tag }} <span class="tag-count">({{ count }})</span>
         </a>
         {% endfor %}
     </div>
     {% endif %}
+
+    <div class="sidebar-section" style="margin-top: 30px;">
+        <h2>Filters</h2>
+        <div class="filter-options">
+            <a href="{{ url_for('.index', ai_filter='off' if ai_filter == 'on' else 'on', category=current_category if current_category != 'search' else None, tag=current_tag) }}"
+                class="filter-toggle"
+                style="display: block; padding: 10px; background: white; border-radius: 8px; text-decoration: none; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                {% if ai_filter == 'on' %}
+                <span style="color: green;">✅</span> AI Highlighting (On)
+                {% else %}
+                <span style="color: #ccc;">⬜</span> AI Highlighting (Off)
+                {% endif %}
+            </a>
+        </div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top: 30px;">
+        <h2>Export Report</h2>
+        <div class="report-options">
+            {% set report_args = {} %}
+            {% if search_query %} {% set _ = report_args.update({'q': search_query}) %} {% endif %}
+            {% if current_tag %} {% set _ = report_args.update({'tag': current_tag}) %} {% endif %}
+            {% if current_category and current_category != 'search' and current_category != 'all' %}
+            {% set _ = report_args.update({'category': current_category}) %}
+            {% endif %}
+            {% if ai_filter %} {% set _ = report_args.update({'ai_filter': ai_filter}) %} {% endif %}
+
+            <a href="{{ url_for('.generate_report', format='markdown', **report_args) }}"
+                class="report-btn">Markdown</a>
+            <a href="{{ url_for('.generate_report', format='html', **report_args) }}" class="report-btn">HTML</a>
+            <a href="{{ url_for('.generate_report', format='csv', **report_args) }}" class="report-btn">CSV</a>
+            <a href="{{ url_for('.generate_report', format='json', **report_args) }}" class="report-btn">JSON</a>
+        </div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top: 30px;">
+        <h2>Blogs de Investigación</h2>
+        <div class="category-list">
+            <a href="https://research.google/blog/" target="_blank" class="category-item">
+                <span class="category-name">Gemini (Google)</span>
+                <span class="external-link">↗</span>
+            </a>
+            <a href="https://openai.com/es-419/research/" target="_blank" class="category-item">
+                <span class="category-name">OpenAI</span>
+                <span class="external-link">↗</span>
+            </a>
+            <a href="https://www.anthropic.com/research" target="_blank" class="category-item">
+                <span class="category-name">Anthropic</span>
+                <span class="external-link">↗</span>
+            </a>
+        </div>
+    </div>
 </div>
 
 <div class="main-content">
     <div class="header-section">
         <h2>
-            {% if current_category == 'all' %}
-                All Posts
+            {% if current_category == 'search' %}
+            Search Results: "{{ search_query }}"
+            {% elif current_category == 'all' %}
+            All Posts
             {% elif current_category == 'story' %}
-                Stories
+            Stories
             {% elif current_category == 'job' %}
-                Job Postings
+            Job Postings
             {% elif current_category == 'ask' %}
-                Ask HN
+            Ask HN
             {% elif current_category == 'poll' %}
-                Polls
+            Polls
             {% else %}
-                Other Posts
+            Other Posts
             {% endif %}
         </h2>
         <p class="post-count">{{ posts|length }} posts</p>
     </div>
 
     {% if posts %}
-        <div class="posts-list">
-            {% for post in posts %}
-            <article class="post-card">
-                <div class="post-header">
-                    <h3 class="post-title">
-                        {% if post.url %}
-                            <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.title }}</a>
-                            <span class="external-link">↗</span>
-                        {% else %}
-                            <a href="/post/{{ post.id }}">{{ post.title }}</a>
-                        {% endif %}
-                    </h3>
-                    <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
-                </div>
-                
-                <div class="post-meta">
-                    <span class="post-score">⬆ {{ post.score }} points</span>
-                    <span class="post-author">by {{ post.author }}</span>
-                    <span class="post-date">{{ post.created_at|timestamp_to_date }}</span>
-                </div>
-                
-                {% if post.tags %}
-                <div class="post-tags">
-                    {% for tag in post.tags %}
-                    <a href="/?tag={{ tag }}" class="post-tag">{{ tag }}</a>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                
-                {% if post.url %}
-                <div class="post-url">
-                    <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.url|truncate(60) }}</a>
-                </div>
-                {% endif %}
-            </article>
-            {% endfor %}
-        </div>
+    <div class="posts-list">
+        {% for post in posts %}
+        <article class="post-card">
+            <div class="post-header">
+                <h3 class="post-title">
+                    {% if post.url %}
+                    <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.title | highlight_markdown | safe
+                        }}</a>
+                    <span class="external-link">↗</span>
+                    {% else %}
+                    <a href="/post/{{ post.id }}">{{ post.title | highlight_markdown | safe }}</a>
+                    {% endif %}
+                </h3>
+                <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
+            </div>
+
+            <div class="post-meta">
+                <span class="post-score">⬆ {{ post.score }} points</span>
+                <span class="post-author">by {{ post.author }}</span>
+                <span class="post-date">{{ post.created_at|timestamp_to_date }}</span>
+            </div>
+
+            {% if post.tags %}
+            <div class="post-tags">
+                {% for tag in post.tags %}
+                <a href="/?tag={{ tag }}" class="post-tag">{{ tag }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if post.url %}
+            <div class="post-url">
+                <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.url|truncate(60) }}</a>
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
     {% else %}
-        <div class="empty-state">
-            <h3>No posts found</h3>
-            <p>Try fetching posts using the CLI:</p>
-            <code>python -m src fetch --limit 30</code>
-        </div>
+    <div class="empty-state">
+        <h3>No posts found</h3>
+        <p>Try fetching posts using the CLI:</p>
+        <code>python -m src fetch --limit 30</code>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

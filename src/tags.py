@@ -14,12 +14,23 @@ class TagSystem:
     
     # Define tag categories with their keywords
     TAG_KEYWORDS = {
-        # AI & Machine Learning
+        # AI & Machine Learning - Priority
+        "OpenAI": ["openai", "chatgpt", "gpt", "dall-e", "sora"],
+        "Claude": ["claude", "anthropic"],
+        "Google AI": ["gemini", "deepmind", "bard"],
+        "xAI": ["xai", "grok"],
+        "Mistral": ["mistral"],
+        "LLMs": ["llm", "large language model", "foundation model"],
+        "GenAI": ["genai", "generative ai"],
+        "Agents": ["agent", "agents", "autonomous agents"],
+        "RAG": ["rag", "retrieval augmented generation"],
+        "NLP": ["nlp", "natural language processing"],
+
+        # General AI (for catch-all)
         "AI": [
-            "ai", "artificial intelligence", "machine learning", "ml", "deep learning",
-            "neural network", "gpt", "llm", "large language model", "chatgpt", "openai",
-            "anthropic", "claude", "gemini", "copilot", "transformer", "diffusion",
-            "stable diffusion", "midjourney", "dall-e", "generative", "llama"
+            "artificial intelligence", "machine learning", "ml", "deep learning",
+            "neural network", "copilot", "transformer", "diffusion",
+            "stable diffusion", "midjourney", "llama"
         ],
         
         # Programming Languages
@@ -80,6 +91,12 @@ class TagSystem:
         "API": ["api", "rest", "graphql", "grpc"],
         "Performance": ["performance", "optimization", "speed", "benchmark", "latency"],
         "Testing": ["test", "testing", "qa", "unit test", "integration test"],
+    }
+
+    # Priority Tags for Highlighting
+    PRIORITY_TAGS = {
+        "OpenAI", "Claude", "Google AI", "xAI", "Mistral", 
+        "LLMs", "GenAI", "Agents", "RAG", "NLP"
     }
     
     @staticmethod

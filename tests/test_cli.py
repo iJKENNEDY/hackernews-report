@@ -399,3 +399,275 @@ class TestCLIUnit:
         # Verify truncation for long fields
         assert "..." in output  # Long title or author should be truncated
         assert "(no url)" in output  # Post without URL
+
+
+    def test_display_search_results_with_results(self):
+        """Test display_search_results shows results with pagination info."""
+        from src.models import SearchQuery, SearchResult
+        
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        # Create test posts
+        posts = [
+            Post(
+                id=1,
+                title="Python Tutorial",
+                author="user1",
+                score=100,
+                url="https://example.com/python",
+                created_at=1234567890,
+                type="story",
+                category=Category.STORY,
+                fetched_at=1234567900,
+            ),
+            Post(
+                id=2,
+                title="Learning Python Basics",
+                author="user2",
+                score=50,
+                url="https://example.com/basics",
+                created_at=1234567891,
+                type="story",
+                category=Category.STORY,
+                fetched_at=1234567901,
+            ),
+        ]
+
+        # Create search query and result
+        query = SearchQuery(text="python", page=1, page_size=20)
+        result = SearchResult(
+            posts=posts,
+            total_results=2,
+            page=1,
+            page_size=20,
+            total_pages=1,
+            query=query
+        )
+
+        # Capture output
+        captured_output = io.StringIO()
+
+        with patch('sys.stdout', captured_output):
+            cli.display_search_results(result, highlight=True)
+
+        output = captured_output.getvalue()
+
+        # Verify results are displayed
+        assert "Search Results" in output
+        assert "2 total" in output
+        assert "Python Tutorial" in output or "python" in output.lower()
+        assert "user1" in output
+        assert "100" in output
+
+        # Verify pagination info
+        assert "Página 1 de 1" in output
+        assert "2 resultados totales" in output
+
+    def test_display_search_results_with_highlighting(self):
+        """Test display_search_results applies term highlighting."""
+        from src.models import SearchQuery, SearchResult
+        
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        # Create test post
+        posts = [
+            Post(
+                id=1,
+                title="Python Tutorial for Beginners",
+                author="user1",
+                score=100,
+                url="https://example.com",
+                created_at=1234567890,
+                type="story",
+                category=Category.STORY,
+                fetched_at=1234567900,
+            ),
+        ]
+
+        # Create search query with text
+        query = SearchQuery(text="python tutorial", page=1, page_size=20)
+        result = SearchResult(
+            posts=posts,
+            total_results=1,
+            page=1,
+            page_size=20,
+            total_pages=1,
+            query=query
+        )
+
+        # Capture output
+        captured_output = io.StringIO()
+
+        with patch('sys.stdout', captured_output):
+            cli.display_search_results(result, highlight=True)
+
+        output = captured_output.getvalue()
+
+        # Verify highlighting is applied (terms wrapped in **)
+        assert "**" in output
+
+    def test_display_search_results_empty(self):
+        """Test display_search_results handles empty results."""
+        from src.models import SearchQuery, SearchResult
+        
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        # Create empty result
+        query = SearchQuery(text="nonexistent", page=1, page_size=20)
+        result = SearchResult(
+            posts=[],
+            total_results=0,
+            page=1,
+            page_size=20,
+            total_pages=0,
+            query=query
+        )
+
+        # Capture output
+        captured_output = io.StringIO()
+
+        with patch('sys.stdout', captured_output):
+            cli.display_search_results(result, highlight=True)
+
+        output = captured_output.getvalue()
+
+        # Verify empty message is shown
+        assert "No posts found" in output
+
+    def test_display_search_results_with_pagination(self):
+        """Test display_search_results shows pagination navigation."""
+        from src.models import SearchQuery, SearchResult
+        
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        # Create test post
+        posts = [
+            Post(
+                id=1,
+                title="Test Post",
+                author="user1",
+                score=100,
+                url="https://example.com",
+                created_at=1234567890,
+                type="story",
+                category=Category.STORY,
+                fetched_at=1234567900,
+            ),
+        ]
+
+        # Create result for page 2 of 3
+        query = SearchQuery(text="test", page=2, page_size=1)
+        result = SearchResult(
+            posts=posts,
+            total_results=3,
+            page=2,
+            page_size=1,
+            total_pages=3,
+            query=query
+        )
+
+        # Capture output
+        captured_output = io.StringIO()
+
+        with patch('sys.stdout', captured_output):
+            cli.display_search_results(result, highlight=True)
+
+        output = captured_output.getvalue()
+
+        # Verify pagination info
+        assert "Página 2 de 3" in output
+        assert "3 resultados totales" in output
+        
+        # Verify navigation hints
+        assert "Navigation" in output
+        assert "previous page: --page 1" in output
+        assert "next page: --page 3" in output
+
+    def test_display_search_results_without_highlighting(self):
+        """Test display_search_results without text search doesn't highlight."""
+        from src.models import SearchQuery, SearchResult
+        
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        # Create test post
+        posts = [
+            Post(
+                id=1,
+                title="Test Post",
+                author="user1",
+                score=100,
+                url="https://example.com",
+                created_at=1234567890,
+                type="story",
+                category=Category.STORY,
+                fetched_at=1234567900,
+            ),
+        ]
+
+        # Create query without text search
+        query = SearchQuery(author="user1", page=1, page_size=20)
+        result = SearchResult(
+            posts=posts,
+            total_results=1,
+            page=1,
+            page_size=20,
+            total_pages=1,
+            query=query
+        )
+
+        # Capture output
+        captured_output = io.StringIO()
+
+        with patch('sys.stdout', captured_output):
+            cli.display_search_results(result, highlight=True)
+
+        output = captured_output.getvalue()
+
+        # Verify no highlighting markers
+        assert "Test Post" in output
+        # Should not have ** markers since no text search
+        lines_with_post = [line for line in output.split('\n') if 'Test Post' in line]
+        if lines_with_post:
+            # The title line should not have ** around "Test Post"
+            assert "**Test Post**" not in output
+
+    def test_highlight_terms_basic(self):
+        """Test _highlight_terms method highlights terms correctly."""
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        # Test basic highlighting
+        result = cli._highlight_terms("Python Tutorial", ["python"])
+        assert "**Python**" in result
+        assert "Tutorial" in result
+
+        # Test case insensitivity
+        result = cli._highlight_terms("python tutorial", ["Python"])
+        assert "**python**" in result
+
+        # Test multiple terms
+        result = cli._highlight_terms("Python Tutorial for Beginners", ["python", "tutorial"])
+        assert "**Python**" in result
+        assert "**Tutorial**" in result
+
+    def test_highlight_terms_no_terms(self):
+        """Test _highlight_terms with no search terms."""
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        result = cli._highlight_terms("Python Tutorial", [])
+        assert result == "Python Tutorial"
+        assert "**" not in result
+
+    def test_highlight_terms_empty_text(self):
+        """Test _highlight_terms with empty text."""
+        mock_service = Mock()
+        cli = CLI(mock_service)
+
+        result = cli._highlight_terms("", ["python"])
+        assert result == ""
