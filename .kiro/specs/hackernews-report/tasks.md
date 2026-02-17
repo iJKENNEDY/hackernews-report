@@ -71,7 +71,7 @@ Este plan desglosa la implementación de la aplicación Hackernews Report en tar
     - Probar validación de datos antes de inserción
     - _Requisitos: 2.1, 2.5_
 
-- [~] 4. Checkpoint - Verificar capa de datos
+- [ ] 4. Checkpoint - Verificar capa de datos
   - Asegurar que todas las pruebas pasen, preguntar al usuario si surgen dudas.
 
 - [x] 5. Implementar cliente de API de Hacker News
@@ -149,7 +149,7 @@ Este plan desglosa la implementación de la aplicación Hackernews Report en tar
     - **Propiedad 14: Respeto del límite especificado**
     - **Valida: Requisitos 5.4**
 
-- [~] 7. Checkpoint - Verificar lógica de negocio
+- [ ] 7. Checkpoint - Verificar lógica de negocio
   - Asegurar que todas las pruebas pasen, preguntar al usuario si surgen dudas.
 
 - [x] 8. Implementar interfaz CLI
@@ -224,7 +224,7 @@ Este plan desglosa la implementación de la aplicación Hackernews Report en tar
     - Simular interrupciones y verificar integridad de BD
     - _Requisitos: 6.1, 6.3, 6.4_
 
-- [~] 11. Checkpoint final - Verificación completa
+- [ ] 11. Checkpoint final - Verificación completa
   - Ejecutar todas las pruebas (unit, property, integration)
   - Verificar cobertura de código >90%
   - Probar comandos CLI manualmente
