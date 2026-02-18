@@ -170,7 +170,7 @@ pytest --cov=src --cov-report=html
 
 ## Licencia
 
-[MIT]
+[MIT](LICENSE)
 
 ## Enlaces
 
