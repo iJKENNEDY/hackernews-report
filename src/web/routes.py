@@ -17,6 +17,7 @@ def index():
     category_filter = request.args.get('category', None)
     tag_filter = request.args.get('tag', None)
     ai_filter = request.args.get('ai_filter', 'on')  # Default on
+    selected_models = request.args.getlist('models')
     
     db = get_db()
     
@@ -33,6 +34,21 @@ def index():
     # Filter by tag if specified
     if tag_filter:
         posts = [p for p in posts if tag_filter in p.tags]
+
+    # Filter by selected AI models (if any)
+    if selected_models:
+        # build mapping model -> keywords
+        model_kw_map = TagSystem.get_model_keyword_map()
+        def matches_models(post):
+            title = (post.title or '').lower()
+            tags = [t.lower() for t in (post.tags or [])]
+            for sel in selected_models:
+                kws = model_kw_map.get(sel, [])
+                for kw in kws:
+                    if kw in title or any(kw in t for t in tags):
+                        return True
+            return False
+        posts = [p for p in posts if matches_models(p)]
         
     # Apply AI Filter (Highlighting)
     if ai_filter == 'on':
@@ -57,6 +73,8 @@ def index():
     
     # Get all available tags
     all_tags = TagSystem.get_all_tags()
+    # AI model filter options and selected models for UI
+    model_filter_options = TagSystem.get_model_filter_options()
     
     # render_template looks in configured template folder
     return render_template(
@@ -68,6 +86,7 @@ def index():
         current_category=category_filter or 'all',
         current_tag=tag_filter,
         ai_filter=ai_filter
+        , model_filter_options=model_filter_options, selected_models=selected_models
     )
 
 
@@ -78,6 +97,7 @@ def search():
     tag_filter = request.args.get('tag', '')
     author_filter = request.args.get('author', '')
     ai_filter = request.args.get('ai_filter', 'on')
+    selected_models = request.args.getlist('models')
     
     if not query_text and not tag_filter and not author_filter:
         return index()
@@ -99,6 +119,19 @@ def search():
         # Execute search
         result = search_service.search_posts(search_query)
         posts = result.posts
+        # Filter by selected AI models (if any)
+        if selected_models:
+            model_kw_map = TagSystem.get_model_keyword_map()
+            def matches_models(post):
+                title = (post.title or '').lower()
+                tags = [t.lower() for t in (post.tags or [])]
+                for sel in selected_models:
+                    kws = model_kw_map.get(sel, [])
+                    for kw in kws:
+                        if kw in title or any(kw in t for t in tags):
+                            return True
+                return False
+            posts = [p for p in posts if matches_models(p)]
         
         # Apply highlighting for search terms (manual/pre-processing)
         if query_text:
@@ -147,6 +180,7 @@ def search():
         search_query=query_text,
         current_tag=tag_filter,
         ai_filter=ai_filter
+        , model_filter_options=TagSystem.get_model_filter_options(), selected_models=selected_models
     )
 
 

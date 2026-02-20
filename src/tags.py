@@ -32,6 +32,20 @@ class TagSystem:
             "neural network", "copilot", "transformer", "diffusion",
             "stable diffusion", "midjourney", "llama"
         ],
+
+            # AI model filter (private vs open-source)
+            # Used by the UI to present checkbox filters for model provenance
+            # Keys are display names, values are either 'private' or 'open-source'
+            "_AI_MODELS_META": {
+                "OpenAI (GPT/ChatGPT)": "private",
+                "Anthropic Claude": "private",
+                "Google Gemini / Bard": "private",
+                "Cohere": "private",
+                "Mistral": "open-source",
+                "Llama (Meta)": "open-source",
+                "MosaicML / MPT": "open-source",
+                "Hugging Face": "open-source"
+            },
         
         # Programming Languages
         "Python": ["python", "django", "flask", "fastapi", "pytorch", "tensorflow"],
@@ -154,3 +168,51 @@ class TagSystem:
             List of keywords for the tag, or empty list if tag doesn't exist
         """
         return TagSystem.TAG_KEYWORDS.get(tag_name, [])
+
+    @staticmethod
+    def get_ai_models() -> List[str]:
+        """
+        Return a sorted list of AI model display names available for filtering.
+        """
+        meta = TagSystem.TAG_KEYWORDS.get('_AI_MODELS_META', {})
+        return sorted(meta.keys())
+
+    @staticmethod
+    def get_models_by_type(model_type: str) -> List[str]:
+        """
+        Return models filtered by type: 'private' or 'open-source'.
+
+        Args:
+            model_type: 'private' or 'open-source'
+        """
+        meta = TagSystem.TAG_KEYWORDS.get('_AI_MODELS_META', {})
+        return sorted([name for name, t in meta.items() if t == model_type])
+
+    @staticmethod
+    def get_model_filter_options() -> dict:
+        """
+        Return structured options for UI checkboxes: {'private': [...], 'open-source': [...]}.
+        """
+        return {
+            'private': TagSystem.get_models_by_type('private'),
+            'open-source': TagSystem.get_models_by_type('open-source')
+        }
+
+    @staticmethod
+    def get_model_keyword_map() -> dict:
+        """
+        Return a mapping of AI model display name -> list of keyword tokens to match against titles/tags.
+
+        This provides a conservative set of search terms for each model to be used by filters.
+        """
+        # canonical mapping with common aliases
+        return {
+            "OpenAI (GPT/ChatGPT)": ["openai", "gpt", "chatgpt", "chat gpt"],
+            "Anthropic Claude": ["anthropic", "claude"],
+            "Google Gemini / Bard": ["gemini", "bard", "google"],
+            "Cohere": ["cohere"],
+            "Mistral": ["mistral"],
+            "Llama (Meta)": ["llama", "meta", "llama 2", "llama2"],
+            "MosaicML / MPT": ["mosaicml", "mpt", "mosaic"],
+            "Hugging Face": ["huggingface", "hugging face", "hf"]
+        }

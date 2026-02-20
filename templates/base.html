@@ -20,6 +20,7 @@
                         <button type="submit">🔍</button>
                     </form>
                 </div>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle theme">☀️</button>
                 <a href="/">Home</a>
                 <a href="https://github.com/iJKENNEDY/hackernews-report" target="_blank">GitHub</a>
             </nav>
@@ -35,6 +36,30 @@
             <p>Hacker News Report - Built with Flask & Python</p>
         </div>
     </footer>
+    <script>
+        (function(){
+            const toggle = document.getElementById('theme-toggle');
+            if(!toggle) return;
+            const LS_KEY = 'hnr-theme';
+            function applyTheme(theme){
+                if(theme === 'dark') document.body.classList.add('dark');
+                else document.body.classList.remove('dark');
+                updateIcon();
+            }
+            function updateIcon(){
+                if(document.body.classList.contains('dark')) toggle.textContent = '🌙';
+                else toggle.textContent = '☀️';
+            }
+            // default to light
+            const saved = localStorage.getItem(LS_KEY);
+            applyTheme(saved === 'dark' ? 'dark' : 'light');
+            toggle.addEventListener('click', function(){
+                const isDark = document.body.classList.toggle('dark');
+                localStorage.setItem(LS_KEY, isDark ? 'dark' : 'light');
+                updateIcon();
+            });
+        })();
+    </script>
 </body>
 
 </html>
