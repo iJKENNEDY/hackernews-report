@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, Response, current_app
 
@@ -7,9 +8,12 @@ from src.report_service import ReportFormat
 
 # Local imports
 from .db import get_db
-from .services import get_search_service, get_report_service, get_tag_statistics
+from .services import get_search_service, get_report_service, get_tag_statistics, get_hn_service
 
 bp = Blueprint('web', __name__)
+
+POSTS_PER_PAGE = 20
+
 
 @bp.route('/')
 def index():
@@ -18,6 +22,7 @@ def index():
     tag_filter = request.args.get('tag', None)
     ai_filter = request.args.get('ai_filter', 'on')  # Default on
     selected_models = request.args.getlist('models')
+    page = request.args.get('page', 1, type=int)
     
     db = get_db()
     
@@ -65,6 +70,14 @@ def index():
             highlighted_posts.append(replace(post, title=new_title))
         posts = highlighted_posts
     
+    # Pagination
+    total_posts = len(posts)
+    total_pages = max(1, math.ceil(total_posts / POSTS_PER_PAGE))
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * POSTS_PER_PAGE
+    end = start + POSTS_PER_PAGE
+    paginated_posts = posts[start:end]
+    
     # Get category statistics
     stats = db.get_category_counts()
     
@@ -79,15 +92,36 @@ def index():
     # render_template looks in configured template folder
     return render_template(
         'index.html',
-        posts=posts,
+        posts=paginated_posts,
         stats=stats,
         tag_stats=tag_stats,
         all_tags=all_tags,
         current_category=category_filter or 'all',
         current_tag=tag_filter,
-        ai_filter=ai_filter
-        , model_filter_options=model_filter_options, selected_models=selected_models
+        ai_filter=ai_filter,
+        model_filter_options=model_filter_options,
+        selected_models=selected_models,
+        page=page,
+        total_pages=total_pages,
+        total_posts=total_posts,
     )
+
+
+@bp.route('/refresh')
+def refresh():
+    """Refresh posts from Hacker News."""
+    db = get_db()
+    hn_service = get_hn_service(db)
+    
+    # Fetch top 50 posts (can be adjusted)
+    result = hn_service.fetch_and_store_posts(limit=50)
+    
+    return jsonify({
+        'status': 'success',
+        'new_posts': result.new_posts,
+        'updated_posts': result.updated_posts,
+        'errors': result.errors
+    })
 
 
 @bp.route('/search')
@@ -98,6 +132,7 @@ def search():
     author_filter = request.args.get('author', '')
     ai_filter = request.args.get('ai_filter', 'on')
     selected_models = request.args.getlist('models')
+    page = request.args.get('page', 1, type=int)
     
     if not query_text and not tag_filter and not author_filter:
         return index()
@@ -113,7 +148,7 @@ def search():
             text=query_text,
             author=author_filter,
             tags=tags,
-            page_size=50  # Larger page size for web UI
+            page_size=500  # Fetch many for pagination
         )
         
         # Execute search
@@ -136,9 +171,6 @@ def search():
         # Apply highlighting for search terms (manual/pre-processing)
         if query_text:
             search_terms = query_text.split()
-            # This is already done?? No, search_service.search returns posts. 
-            # SearchEngine doesn't highlight. CLI does display logic highlights.
-            # So we define highlighting here.
             highlighted_posts = []
             for post in posts:
                 new_title = search_service.highlight_terms(post.title, search_terms)
@@ -164,6 +196,14 @@ def search():
         posts = []
         # TODO: flash error
     
+    # Pagination
+    total_posts = len(posts)
+    total_pages = max(1, math.ceil(total_posts / POSTS_PER_PAGE))
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * POSTS_PER_PAGE
+    end = start + POSTS_PER_PAGE
+    paginated_posts = posts[start:end]
+    
     # Get stats for sidebar
     stats = db.get_category_counts()
     # Tag stats from search results
@@ -172,15 +212,19 @@ def search():
     
     return render_template(
         'index.html',
-        posts=posts,
+        posts=paginated_posts,
         stats=stats,
         tag_stats=tag_stats,
         all_tags=all_tags,
         current_category='search',
         search_query=query_text,
         current_tag=tag_filter,
-        ai_filter=ai_filter
-        , model_filter_options=TagSystem.get_model_filter_options(), selected_models=selected_models
+        ai_filter=ai_filter,
+        model_filter_options=TagSystem.get_model_filter_options(),
+        selected_models=selected_models,
+        page=page,
+        total_pages=total_pages,
+        total_posts=total_posts,
     )
 
 

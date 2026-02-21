@@ -3,6 +3,13 @@ from src.search_engine import SearchEngine
 from src.search_service import SearchService
 from src.report_service import ReportService
 from src.tags import TagSystem
+from src.service import HackerNewsService
+from src.api_client import HNApiClient
+
+def get_hn_service(db):
+    """Get configured Hacker News service."""
+    api_client = HNApiClient()
+    return HackerNewsService(api_client=api_client, database=db)
 
 def get_search_service(db):
     """Get configured search service."""

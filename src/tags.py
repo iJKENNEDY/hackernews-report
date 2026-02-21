@@ -112,6 +112,19 @@ class TagSystem:
         "OpenAI", "Claude", "Google AI", "xAI", "Mistral", 
         "LLMs", "GenAI", "Agents", "RAG", "NLP"
     }
+
+    # Emoji mapping for AI model filters
+    MODEL_EMOJIS = {
+        "OpenAI (GPT/ChatGPT)": "🧠",
+        "Anthropic Claude": "🧊",
+        "Google Gemini / Bard": "✨",
+        "Cohere": "🌐",
+        "Mistral": "🌬️",
+        "Llama (Meta)": "🦙",
+        "MosaicML / MPT": "🧩",
+        "Hugging Face": "🤗",
+        "xAI": "⚡",
+    }
     
     @staticmethod
     def extract_tags(title: str, max_tags: int = 5) -> List[str]:
@@ -216,3 +229,16 @@ class TagSystem:
             "MosaicML / MPT": ["mosaicml", "mpt", "mosaic"],
             "Hugging Face": ["huggingface", "hugging face", "hf"]
         }
+
+    @staticmethod
+    def get_model_emoji(model_name: str) -> str:
+        """
+        Return the emoji for a given AI model display name.
+
+        Args:
+            model_name: Display name of the model
+
+        Returns:
+            Emoji string, or a default robot emoji if not found
+        """
+        return TagSystem.MODEL_EMOJIS.get(model_name, "🤖")

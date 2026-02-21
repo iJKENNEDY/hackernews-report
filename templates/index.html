@@ -2,6 +2,78 @@
 
 {% block title %}Hacker News Report - Home{% endblock %}
 
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Refresh button ---
+        const refreshBtn = document.getElementById('refresh-posts-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async function () {
+                if (refreshBtn.classList.contains('loading')) return;
+
+                refreshBtn.classList.add('loading');
+                refreshBtn.disabled = true;
+                const btnText = refreshBtn.querySelector('.btn-text');
+                const originalText = btnText.textContent;
+                btnText.textContent = 'Actualizando...';
+
+                try {
+                    const response = await fetch('/refresh');
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        btnText.textContent = `¡Listo! (${data.new_posts} nuevos)`;
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error('Error en la respuesta');
+                    }
+                } catch (error) {
+                    console.error('Refresh failed:', error);
+                    btnText.textContent = 'Error al actualizar';
+                    refreshBtn.classList.remove('loading');
+                    refreshBtn.disabled = false;
+
+                    setTimeout(() => {
+                        btnText.textContent = originalText;
+                    }, 3000);
+                }
+            });
+        }
+
+        // --- View toggle (list / grid) ---
+        const VIEW_KEY = 'hnr-view-mode';
+        const postsList = document.getElementById('posts-container');
+        const btnList = document.getElementById('view-list-btn');
+        const btnGrid = document.getElementById('view-grid-btn');
+        if (!postsList || !btnList || !btnGrid) return;
+
+        function setView(mode) {
+            if (mode === 'grid') {
+                postsList.classList.add('grid-view');
+                postsList.classList.remove('list-view');
+                btnGrid.classList.add('active');
+                btnList.classList.remove('active');
+            } else {
+                postsList.classList.remove('grid-view');
+                postsList.classList.add('list-view');
+                btnList.classList.add('active');
+                btnGrid.classList.remove('active');
+            }
+            localStorage.setItem(VIEW_KEY, mode);
+        }
+
+        // Restore saved preference (default: list)
+        const saved = localStorage.getItem(VIEW_KEY) || 'list';
+        setView(saved);
+
+        btnList.addEventListener('click', () => setView('list'));
+        btnGrid.addEventListener('click', () => setView('grid'));
+    });
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="sidebar">
     <h2>Categories</h2>
@@ -117,11 +189,35 @@
             Other Posts
             {% endif %}
         </h2>
-        <p class="post-count">{{ posts|length }} posts</p>
+        <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
+            <button id="refresh-posts-btn" class="refresh-btn">
+                <span class="btn-icon">🔄</span>
+                <div class="spinner"></div>
+                <span class="btn-text">Actualizar Posts</span>
+            </button>
+            <div class="view-toggle" id="view-toggle">
+                <button id="view-list-btn" class="view-toggle-btn active" aria-label="Vista lista" title="Vista lista">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="1" y="2" width="16" height="2.5" rx="1" fill="currentColor" />
+                        <rect x="1" y="7.75" width="16" height="2.5" rx="1" fill="currentColor" />
+                        <rect x="1" y="13.5" width="16" height="2.5" rx="1" fill="currentColor" />
+                    </svg>
+                </button>
+                <button id="view-grid-btn" class="view-toggle-btn" aria-label="Vista grilla" title="Vista grilla">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="1" y="1" width="7" height="7" rx="1.5" fill="currentColor" />
+                        <rect x="10" y="1" width="7" height="7" rx="1.5" fill="currentColor" />
+                        <rect x="1" y="10" width="7" height="7" rx="1.5" fill="currentColor" />
+                        <rect x="10" y="10" width="7" height="7" rx="1.5" fill="currentColor" />
+                    </svg>
+                </button>
+            </div>
+            <p class="post-count">{{ total_posts }} posts &middot; Página {{ page }} de {{ total_pages }}</p>
+        </div>
     </div>
 
     {% if posts %}
-    <div class="posts-list">
+    <div id="posts-container" class="posts-list list-view">
         {% for post in posts %}
         <article class="post-card">
             <div class="post-header">
@@ -165,6 +261,59 @@
         <p>Try fetching posts using the CLI:</p>
         <code>python -m src fetch --limit 30</code>
     </div>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+    <nav class="pagination" aria-label="Paginación de posts">
+        {# Previous button #}
+        {% if page > 1 %}
+        <a href="?{% for key, val in request.args.items(multi=True) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page={{ page - 1 }}"
+            class="page-btn page-prev" aria-label="Página anterior">
+            ← Anterior
+        </a>
+        {% else %}
+        <span class="page-btn page-prev disabled">← Anterior</span>
+        {% endif %}
+
+        {# Page numbers #}
+        <div class="page-numbers">
+            {% set start_page = [1, page - 2] | max %}
+            {% set end_page = [total_pages, page + 2] | min %}
+
+            {% if start_page > 1 %}
+            <a href="?{% for key, val in request.args.items(multi=True) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page=1"
+                class="page-num">1</a>
+            {% if start_page > 2 %}
+            <span class="page-ellipsis">…</span>
+            {% endif %}
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+            {% if p == page %}
+            <span class="page-num active" aria-current="page">{{ p }}</span>
+            {% else %}
+            <a href="?{% for key, val in request.args.items(multi=True) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page={{ p }}"
+                class="page-num">{{ p }}</a>
+            {% endif %}
+            {% endfor %}
+
+            {% if end_page < total_pages %} {% if end_page < total_pages - 1 %} <span class="page-ellipsis">…</span>
+                {% endif %}
+                <a href="?{% for key, val in request.args.items(multi=true) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page={{ total_pages }}"
+                    class="page-num">{{ total_pages }}</a>
+                {% endif %}
+        </div>
+
+        {# Next button #}
+        {% if page < total_pages %} <a
+            href="?{% for key, val in request.args.items(multi=true) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page={{ page + 1 }}"
+            class="page-btn page-next" aria-label="Página siguiente">
+            Siguiente →
+            </a>
+            {% else %}
+            <span class="page-btn page-next disabled">Siguiente →</span>
+            {% endif %}
+    </nav>
     {% endif %}
 </div>
 {% endblock %}

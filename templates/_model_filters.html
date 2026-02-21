@@ -4,22 +4,25 @@
         {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
         {% if current_tag %}<input type="hidden" name="tag" value="{{ current_tag }}">{% endif %}
         {% if current_category and current_category != 'search' and current_category != 'all' %}
-            <input type="hidden" name="category" value="{{ current_category }}">
+        <input type="hidden" name="category" value="{{ current_category }}">
         {% endif %}
         {% if ai_filter %}<input type="hidden" name="ai_filter" value="{{ ai_filter }}">{% endif %}
 
         <fieldset style="border:none;padding:0;margin:0">
-            <legend style="font-size:14px;margin-bottom:6px">AI Models</legend>
+            <legend style="font-size:14px;margin-bottom:6px">🤖 AI Models</legend>
 
             {% for group, models in model_filter_options.items() %}
             <div style="margin-bottom:8px">
-                <strong style="font-size:13px;text-transform:capitalize">{{ group.replace('_',' ') }}</strong>
+                <strong style="font-size:13px;text-transform:capitalize">
+                    {% if group == 'private' %}🔒{% else %}🔓{% endif %}
+                    {{ group.replace('_',' ') }}
+                </strong>
                 <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
                     {% for model in models %}
-                    <label style="font-size:13px;color:#333">
-                        <input type="checkbox" name="models" value="{{ model }}"
-                            {% if selected_models and model in selected_models %}checked{% endif %}>
-                        {{ model }}
+                    <label style="font-size:13px;color:#333;display:flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="checkbox" name="models" value="{{ model }}" {% if selected_models and model in
+                            selected_models %}checked{% endif %}>
+                        <span>{{ model|model_emoji }} {{ model }}</span>
                     </label>
                     {% endfor %}
                 </div>

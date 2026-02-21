@@ -1,4 +1,5 @@
 from datetime import datetime
+from src.tags import TagSystem
 
 def register_filters(app):
     
@@ -27,3 +28,8 @@ def register_filters(app):
             else:
                 new_text += f'<span class="ai-highlight">{part}</span>'
         return new_text
+
+    @app.template_filter('model_emoji')
+    def model_emoji(model_name):
+        """Return the emoji for an AI model name."""
+        return TagSystem.get_model_emoji(model_name)

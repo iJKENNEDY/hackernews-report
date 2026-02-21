@@ -5,13 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Hacker News Report{% endblock %}</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>"
+        type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
     <header>
         <div class="container">
-            <h1><a href="/">📰 Hacker News Report</a></h1>
+            <h1><a href="/">🦉 Hacker News Report</a></h1>
             <nav>
                 <div class="search-container">
                     <form action="/search" method="get">
@@ -20,7 +23,8 @@
                         <button type="submit">🔍</button>
                     </form>
                 </div>
-                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle theme">☀️</button>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme"
+                    title="Toggle theme">☀️</button>
                 <a href="/">Home</a>
                 <a href="https://github.com/iJKENNEDY/hackernews-report" target="_blank">GitHub</a>
             </nav>
@@ -37,29 +41,30 @@
         </div>
     </footer>
     <script>
-        (function(){
+        (function () {
             const toggle = document.getElementById('theme-toggle');
-            if(!toggle) return;
+            if (!toggle) return;
             const LS_KEY = 'hnr-theme';
-            function applyTheme(theme){
-                if(theme === 'dark') document.body.classList.add('dark');
+            function applyTheme(theme) {
+                if (theme === 'dark') document.body.classList.add('dark');
                 else document.body.classList.remove('dark');
                 updateIcon();
             }
-            function updateIcon(){
-                if(document.body.classList.contains('dark')) toggle.textContent = '🌙';
+            function updateIcon() {
+                if (document.body.classList.contains('dark')) toggle.textContent = '🌙';
                 else toggle.textContent = '☀️';
             }
             // default to light
             const saved = localStorage.getItem(LS_KEY);
             applyTheme(saved === 'dark' ? 'dark' : 'light');
-            toggle.addEventListener('click', function(){
+            toggle.addEventListener('click', function () {
                 const isDark = document.body.classList.toggle('dark');
                 localStorage.setItem(LS_KEY, isDark ? 'dark' : 'light');
                 updateIcon();
             });
         })();
     </script>
+    {% block scripts %}{% endblock %}
 </body>
 
 </html>
