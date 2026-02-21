@@ -2,6 +2,8 @@
 
 Una aplicación para obtener, categorizar, visualizar y reportar posts de Hacker News, disponible tanto en línea de comandos como en interfaz web moderna.
 
+![Hacker News Report - Home](static/images/home.png)
+
 ## Características
 
 - 📥 Obtiene posts de la API pública de Hacker News
