@@ -47,36 +47,271 @@
         const postsList = document.getElementById('posts-container');
         const btnList = document.getElementById('view-list-btn');
         const btnGrid = document.getElementById('view-grid-btn');
-        if (!postsList || !btnList || !btnGrid) return;
-
-        function setView(mode) {
-            if (mode === 'grid') {
-                postsList.classList.add('grid-view');
-                postsList.classList.remove('list-view');
-                btnGrid.classList.add('active');
-                btnList.classList.remove('active');
-            } else {
-                postsList.classList.remove('grid-view');
-                postsList.classList.add('list-view');
-                btnList.classList.add('active');
-                btnGrid.classList.remove('active');
+        if (postsList && btnList && btnGrid) {
+            function setView(mode) {
+                if (mode === 'grid') {
+                    postsList.classList.add('grid-view');
+                    postsList.classList.remove('list-view');
+                    btnGrid.classList.add('active');
+                    btnList.classList.remove('active');
+                } else {
+                    postsList.classList.remove('grid-view');
+                    postsList.classList.add('list-view');
+                    btnList.classList.add('active');
+                    btnGrid.classList.remove('active');
+                }
+                localStorage.setItem(VIEW_KEY, mode);
             }
-            localStorage.setItem(VIEW_KEY, mode);
+
+            const saved = localStorage.getItem(VIEW_KEY) || 'list';
+            setView(saved);
+
+            btnList.addEventListener('click', () => setView('list'));
+            btnGrid.addEventListener('click', () => setView('grid'));
         }
 
-        // Restore saved preference (default: list)
-        const saved = localStorage.getItem(VIEW_KEY) || 'list';
-        setView(saved);
+        // --- Favorites System ---
 
-        btnList.addEventListener('click', () => setView('list'));
-        btnGrid.addEventListener('click', () => setView('grid'));
+        // Toggle favorite (default group)
+        document.querySelectorAll('.fav-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const postId = this.dataset.postId;
+                const groupId = this.dataset.groupId || 0;
+
+                this.classList.add('fav-loading');
+
+                try {
+                    const res = await fetch('/api/favorites/toggle', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ post_id: parseInt(postId), group_id: parseInt(groupId) })
+                    });
+                    const data = await res.json();
+
+                    if (data.is_favorite) {
+                        this.classList.add('is-favorite');
+                        this.setAttribute('title', 'Quitar de favoritos');
+                        this.querySelector('.fav-icon').textContent = '❤️';
+                    } else {
+                        this.classList.remove('is-favorite');
+                        this.setAttribute('title', 'Agregar a favoritos');
+                        this.querySelector('.fav-icon').textContent = '🤍';
+                    }
+
+                    // Update sidebar counts
+                    const defaultCountEl = document.getElementById('fav-default-count');
+                    const totalCountEl = document.getElementById('fav-total-count');
+                    if (defaultCountEl) defaultCountEl.textContent = data.default_count;
+                    if (totalCountEl) totalCountEl.textContent = data.total_count;
+
+                } catch (err) {
+                    console.error('Favorite toggle failed:', err);
+                } finally {
+                    this.classList.remove('fav-loading');
+                }
+            });
+        });
+
+        // Add to group dropdown
+        document.querySelectorAll('.fav-group-trigger').forEach(trigger => {
+            trigger.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const dropdown = this.closest('.fav-group-wrapper').querySelector('.fav-group-dropdown');
+                // Close all other dropdowns
+                document.querySelectorAll('.fav-group-dropdown.open').forEach(d => {
+                    if (d !== dropdown) d.classList.remove('open');
+                });
+                dropdown.classList.toggle('open');
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function () {
+            document.querySelectorAll('.fav-group-dropdown.open').forEach(d => d.classList.remove('open'));
+        });
+
+        // Handle group selection in dropdown
+        document.querySelectorAll('.fav-group-option').forEach(option => {
+            option.addEventListener('click', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const postId = this.dataset.postId;
+                const groupId = this.dataset.groupId;
+
+                try {
+                    const res = await fetch('/api/favorites/add-to-group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ post_id: parseInt(postId), group_id: parseInt(groupId) })
+                    });
+                    const data = await res.json();
+
+                    // Visual feedback
+                    this.style.background = '#e8f5e9';
+                    setTimeout(() => { this.style.background = ''; }, 800);
+
+                    // Also mark the heart as favorite
+                    const card = this.closest('.post-card');
+                    if (card) {
+                        const favBtn = card.querySelector('.fav-toggle-btn');
+                        if (favBtn) {
+                            favBtn.classList.add('is-favorite');
+                            favBtn.querySelector('.fav-icon').textContent = '❤️';
+                        }
+                    }
+
+                } catch (err) {
+                    console.error('Add to group failed:', err);
+                }
+
+                // Close dropdown
+                this.closest('.fav-group-dropdown').classList.remove('open');
+            });
+        });
+
+        // --- Group Management Modal ---
+        const modalOverlay = document.getElementById('group-modal-overlay');
+        const openModalBtn = document.getElementById('open-group-modal');
+        const closeModalBtn = document.getElementById('close-group-modal');
+
+        if (openModalBtn && modalOverlay) {
+            openModalBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                modalOverlay.classList.add('open');
+                loadGroups();
+            });
+        }
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', () => {
+                modalOverlay.classList.remove('open');
+            });
+        }
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+            });
+        }
+
+        // Create group form
+        const createGroupForm = document.getElementById('create-group-form');
+        if (createGroupForm) {
+            createGroupForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const nameInput = this.querySelector('#group-name-input');
+                const emojiInput = this.querySelector('#group-emoji-input');
+                const colorInput = this.querySelector('#group-color-input');
+                const name = nameInput.value.trim();
+                if (!name) return;
+
+                try {
+                    const res = await fetch('/api/groups', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: name,
+                            emoji: emojiInput.value || '📁',
+                            color: colorInput.value || '#ff6600'
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'created') {
+                        nameInput.value = '';
+                        emojiInput.value = '📁';
+                        loadGroups();
+                        // Reload page to update sidebar
+                        setTimeout(() => window.location.reload(), 500);
+                    } else {
+                        alert(data.error || 'Error creating group');
+                    }
+                } catch (err) {
+                    console.error('Create group failed:', err);
+                }
+            });
+        }
+
+        async function loadGroups() {
+            const listEl = document.getElementById('modal-groups-list');
+            if (!listEl) return;
+
+            try {
+                const res = await fetch('/api/groups');
+                const data = await res.json();
+                listEl.innerHTML = '';
+
+                if (data.groups.length === 0) {
+                    listEl.innerHTML = '<p class="no-groups-msg">No hay grupos creados aún.</p>';
+                    return;
+                }
+
+                data.groups.forEach(group => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-group-item';
+                    item.innerHTML = `
+                        <span class="modal-group-emoji">${group.emoji}</span>
+                        <span class="modal-group-name">${group.name}</span>
+                        <span class="modal-group-count">${group.post_count} posts</span>
+                        <button class="modal-group-delete" data-group-id="${group.id}" title="Eliminar grupo">🗑️</button>
+                    `;
+                    listEl.appendChild(item);
+                });
+
+                // Attach delete handlers
+                listEl.querySelectorAll('.modal-group-delete').forEach(btn => {
+                    btn.addEventListener('click', async function () {
+                        const gId = this.dataset.groupId;
+                        if (!confirm('¿Eliminar este grupo y sus favoritos?')) return;
+                        try {
+                            await fetch(`/api/groups/${gId}`, { method: 'DELETE' });
+                            loadGroups();
+                            setTimeout(() => window.location.reload(), 500);
+                        } catch (err) {
+                            console.error('Delete group failed:', err);
+                        }
+                    });
+                });
+            } catch (err) {
+                console.error('Load groups failed:', err);
+            }
+        }
     });
 </script>
 {% endblock %}
 
 {% block content %}
 <div class="sidebar">
-    <h2>Categories</h2>
+    {# ──── Favorites Section ──── #}
+    <div class="sidebar-section fav-sidebar-section">
+        <h2>⭐ Mis Favoritos</h2>
+        <div class="category-list">
+            <a href="/favorites"
+                class="category-item {% if current_category == 'favorites' and fav_current_group is not defined %}active{% endif %}">
+                <span class="category-name">📋 Todos</span>
+                <span class="category-count" id="fav-total-count">{{ fav_total_count|default(0) }}</span>
+            </a>
+            <a href="/favorites?group=0"
+                class="category-item {% if current_category == 'favorites' and fav_current_group is defined and fav_current_group == 0 %}active{% endif %}">
+                <span class="category-name">⭐ General</span>
+                <span class="category-count" id="fav-default-count">{{ fav_default_count|default(0) }}</span>
+            </a>
+            {% if fav_groups %}
+            {% for group in fav_groups %}
+            <a href="/favorites?group={{ group.id }}"
+                class="category-item {% if fav_current_group is defined and fav_current_group == group.id %}active{% endif %}">
+                <span class="category-name">{{ group.emoji }} {{ group.name }}</span>
+                <span class="category-count">{{ group.post_count }}</span>
+            </a>
+            {% endfor %}
+            {% endif %}
+        </div>
+        <button id="open-group-modal" class="manage-groups-btn">
+            ⚙️ Gestionar Grupos
+        </button>
+    </div>
+
+    <h2 style="margin-top: 24px;">Categories</h2>
     <div class="category-list">
         <a href="/" class="category-item {% if current_category == 'all' %}active{% endif %}">
             <span class="category-name">All Posts</span>
@@ -166,6 +401,10 @@
                 <span class="category-name">Anthropic</span>
                 <span class="external-link">↗</span>
             </a>
+            <a href="https://arxiv.org/" target="_blank" class="category-item">
+                <span class="category-name">📄 arXiv (Papers)</span>
+                <span class="external-link">↗</span>
+            </a>
         </div>
     </div>
 </div>
@@ -173,7 +412,9 @@
 <div class="main-content">
     <div class="header-section">
         <h2>
-            {% if current_category == 'search' %}
+            {% if current_category == 'favorites' %}
+            {{ fav_current_group_name|default('⭐ Mis Favoritos') }}
+            {% elif current_category == 'search' %}
             Search Results: "{{ search_query }}"
             {% elif current_category == 'all' %}
             All Posts
@@ -230,7 +471,32 @@
                     <a href="/post/{{ post.id }}">{{ post.title | highlight_markdown | safe }}</a>
                     {% endif %}
                 </h3>
-                <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
+                <div class="post-actions-row">
+                    {# Favorite toggle button #}
+                    <button class="fav-toggle-btn {% if post.id in favorite_ids %}is-favorite{% endif %}"
+                        data-post-id="{{ post.id }}" data-group-id="0"
+                        title="{% if post.id in favorite_ids %}Quitar de favoritos{% else %}Agregar a favoritos{% endif %}">
+                        <span class="fav-icon">{% if post.id in favorite_ids %}❤️{% else %}🤍{% endif %}</span>
+                    </button>
+                    {# Add to group dropdown #}
+                    {% if fav_groups %}
+                    <div class="fav-group-wrapper">
+                        <button class="fav-group-trigger" title="Agregar a grupo">
+                            <span>📂</span>
+                        </button>
+                        <div class="fav-group-dropdown">
+                            <div class="fav-dropdown-header">Agregar a grupo:</div>
+                            {% for group in fav_groups %}
+                            <button class="fav-group-option" data-post-id="{{ post.id }}"
+                                data-group-id="{{ group.id }}">
+                                {{ group.emoji }} {{ group.name }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
+                </div>
             </div>
 
             <div class="post-meta">
@@ -257,9 +523,14 @@
     </div>
     {% else %}
     <div class="empty-state">
+        {% if current_category == 'favorites' %}
+        <h3>No hay favoritos aún</h3>
+        <p>Haz clic en el ❤️ de cualquier post para agregarlo a tus favoritos.</p>
+        {% else %}
         <h3>No posts found</h3>
         <p>Try fetching posts using the CLI:</p>
         <code>python -m src fetch --limit 30</code>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -315,5 +586,31 @@
             {% endif %}
     </nav>
     {% endif %}
+</div>
+
+{# ──── Group Management Modal ──── #}
+<div id="group-modal-overlay" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>⚙️ Gestionar Grupos de Favoritos</h3>
+            <button id="close-group-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="create-group-form" class="create-group-form">
+                <div class="form-row">
+                    <input type="text" id="group-emoji-input" class="form-input emoji-input" value="📁" maxlength="4"
+                        title="Emoji del grupo">
+                    <input type="text" id="group-name-input" class="form-input" placeholder="Nombre del grupo..."
+                        required maxlength="50">
+                    <input type="color" id="group-color-input" class="form-input color-input" value="#ff6600"
+                        title="Color del grupo">
+                    <button type="submit" class="create-group-btn">+ Crear</button>
+                </div>
+            </form>
+            <div id="modal-groups-list" class="modal-groups-list">
+                <p class="no-groups-msg">Cargando...</p>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, jsonify, Response, curren
 from src.models import Category, SearchQuery
 from src.tags import TagSystem
 from src.report_service import ReportFormat
+from src.favorites import FavoritesManager
 
 # Local imports
 from .db import get_db
@@ -13,6 +14,25 @@ from .services import get_search_service, get_report_service, get_tag_statistics
 bp = Blueprint('web', __name__)
 
 POSTS_PER_PAGE = 20
+
+
+def _get_favorites_manager():
+    """Get a FavoritesManager using the same DB path as the main database."""
+    from flask import g
+    if 'fav_mgr' not in g:
+        from src.config import DB_PATH
+        import os
+        db_path = os.getenv('DB_PATH', DB_PATH)
+        g.fav_mgr = FavoritesManager(db_path)
+    return g.fav_mgr
+
+
+@bp.teardown_app_request
+def _close_fav_mgr(exc=None):
+    from flask import g
+    mgr = g.pop('fav_mgr', None)
+    if mgr is not None:
+        mgr.close()
 
 
 @bp.route('/')
@@ -88,6 +108,13 @@ def index():
     all_tags = TagSystem.get_all_tags()
     # AI model filter options and selected models for UI
     model_filter_options = TagSystem.get_model_filter_options()
+
+    # Get favorites info for sidebar
+    fav_mgr = _get_favorites_manager()
+    favorite_ids = set(fav_mgr.get_all_favorite_post_ids())
+    fav_groups = fav_mgr.get_groups()
+    fav_default_count = fav_mgr.get_default_count()
+    fav_total_count = fav_mgr.get_total_count()
     
     # render_template looks in configured template folder
     return render_template(
@@ -104,6 +131,83 @@ def index():
         page=page,
         total_pages=total_pages,
         total_posts=total_posts,
+        favorite_ids=favorite_ids,
+        fav_groups=fav_groups,
+        fav_default_count=fav_default_count,
+        fav_total_count=fav_total_count,
+    )
+
+
+@bp.route('/favorites')
+def favorites_page():
+    """Page showing favorite posts, optionally filtered by group."""
+    group_id = request.args.get('group', None, type=int)
+    page = request.args.get('page', 1, type=int)
+
+    db = get_db()
+    fav_mgr = _get_favorites_manager()
+
+    # Get favorite post IDs for this group
+    if group_id is not None:
+        fav_post_ids = fav_mgr.get_favorite_post_ids(group_id)
+    else:
+        fav_post_ids = fav_mgr.get_favorite_post_ids()  # all
+
+    # Fetch actual post objects
+    posts = []
+    for pid in fav_post_ids:
+        post = db.get_post_by_id(pid)
+        if post:
+            posts.append(post)
+
+    # Pagination
+    total_posts = len(posts)
+    total_pages = max(1, math.ceil(total_posts / POSTS_PER_PAGE))
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * POSTS_PER_PAGE
+    end = start + POSTS_PER_PAGE
+    paginated_posts = posts[start:end]
+
+    # Sidebar data
+    stats = db.get_category_counts()
+    tag_stats = get_tag_statistics(posts)
+    all_tags = TagSystem.get_all_tags()
+    model_filter_options = TagSystem.get_model_filter_options()
+
+    favorite_ids = set(fav_mgr.get_all_favorite_post_ids())
+    fav_groups = fav_mgr.get_groups()
+    fav_default_count = fav_mgr.get_default_count()
+    fav_total_count = fav_mgr.get_total_count()
+
+    # Determine current group name for header
+    current_group_name = "Todos los Favoritos"
+    if group_id == 0:
+        current_group_name = "⭐ Favoritos (General)"
+    elif group_id is not None:
+        grp = fav_mgr.get_group_by_id(group_id)
+        if grp:
+            current_group_name = f"{grp.emoji} {grp.name}"
+
+    return render_template(
+        'index.html',
+        posts=paginated_posts,
+        stats=stats,
+        tag_stats=tag_stats,
+        all_tags=all_tags,
+        current_category='favorites',
+        current_tag=None,
+        ai_filter='off',
+        model_filter_options=model_filter_options,
+        selected_models=[],
+        page=page,
+        total_pages=total_pages,
+        total_posts=total_posts,
+        favorite_ids=favorite_ids,
+        fav_groups=fav_groups,
+        fav_default_count=fav_default_count,
+        fav_total_count=fav_total_count,
+        fav_current_group=group_id,
+        fav_current_group_name=current_group_name,
     )
 
 
@@ -209,6 +313,13 @@ def search():
     # Tag stats from search results
     tag_stats = get_tag_statistics(posts)
     all_tags = TagSystem.get_all_tags()
+
+    # Favorites info
+    fav_mgr = _get_favorites_manager()
+    favorite_ids = set(fav_mgr.get_all_favorite_post_ids())
+    fav_groups = fav_mgr.get_groups()
+    fav_default_count = fav_mgr.get_default_count()
+    fav_total_count = fav_mgr.get_total_count()
     
     return render_template(
         'index.html',
@@ -225,6 +336,10 @@ def search():
         page=page,
         total_pages=total_pages,
         total_posts=total_posts,
+        favorite_ids=favorite_ids,
+        fav_groups=fav_groups,
+        fav_default_count=fav_default_count,
+        fav_total_count=fav_total_count,
     )
 
 
@@ -372,3 +487,172 @@ def post_detail(post_id):
         return render_template('404.html'), 404
     
     return render_template('post_detail.html', post=post)
+
+
+# ──────────── Favorites API ────────────
+
+@bp.route('/api/favorites/toggle', methods=['POST'])
+def api_toggle_favorite():
+    """Toggle a post as favorite (add/remove from default group)."""
+    data = request.get_json()
+    if not data or 'post_id' not in data:
+        return jsonify({'error': 'post_id required'}), 400
+
+    post_id = int(data['post_id'])
+    group_id = int(data.get('group_id', 0))
+
+    fav_mgr = _get_favorites_manager()
+
+    if fav_mgr.is_favorite(post_id, group_id):
+        fav_mgr.remove_favorite(post_id, group_id)
+        return jsonify({
+            'status': 'removed',
+            'post_id': post_id,
+            'group_id': group_id,
+            'is_favorite': False,
+            'default_count': fav_mgr.get_default_count(),
+            'total_count': fav_mgr.get_total_count(),
+        })
+    else:
+        fav_mgr.add_favorite(post_id, group_id)
+        return jsonify({
+            'status': 'added',
+            'post_id': post_id,
+            'group_id': group_id,
+            'is_favorite': True,
+            'default_count': fav_mgr.get_default_count(),
+            'total_count': fav_mgr.get_total_count(),
+        })
+
+
+@bp.route('/api/favorites/add-to-group', methods=['POST'])
+def api_add_to_group():
+    """Add a post to a specific group."""
+    data = request.get_json()
+    if not data or 'post_id' not in data or 'group_id' not in data:
+        return jsonify({'error': 'post_id and group_id required'}), 400
+
+    post_id = int(data['post_id'])
+    group_id = int(data['group_id'])
+
+    fav_mgr = _get_favorites_manager()
+    fav_mgr.add_favorite(post_id, group_id)
+
+    return jsonify({
+        'status': 'added',
+        'post_id': post_id,
+        'group_id': group_id,
+        'post_groups': fav_mgr.get_post_groups(post_id),
+    })
+
+
+@bp.route('/api/favorites/remove', methods=['POST'])
+def api_remove_favorite():
+    """Remove a post from all groups."""
+    data = request.get_json()
+    if not data or 'post_id' not in data:
+        return jsonify({'error': 'post_id required'}), 400
+
+    post_id = int(data['post_id'])
+    fav_mgr = _get_favorites_manager()
+    removed = fav_mgr.remove_favorite_from_all(post_id)
+
+    return jsonify({
+        'status': 'removed',
+        'post_id': post_id,
+        'removed_count': removed,
+        'default_count': fav_mgr.get_default_count(),
+        'total_count': fav_mgr.get_total_count(),
+    })
+
+
+@bp.route('/api/favorites/list')
+def api_favorites_list():
+    """Get all favorite post IDs, optionally by group."""
+    group_id = request.args.get('group_id', None, type=int)
+    fav_mgr = _get_favorites_manager()
+
+    if group_id is not None:
+        post_ids = fav_mgr.get_favorite_post_ids(group_id)
+    else:
+        post_ids = fav_mgr.get_all_favorite_post_ids()
+
+    return jsonify({
+        'post_ids': post_ids,
+        'count': len(post_ids),
+        'default_count': fav_mgr.get_default_count(),
+        'total_count': fav_mgr.get_total_count(),
+    })
+
+
+@bp.route('/api/favorites/post-groups/<int:post_id>')
+def api_post_groups(post_id):
+    """Get all groups that contain a given post."""
+    fav_mgr = _get_favorites_manager()
+    groups = fav_mgr.get_post_groups(post_id)
+    return jsonify({'post_id': post_id, 'group_ids': groups})
+
+
+# ──────────── Groups API ────────────
+
+@bp.route('/api/groups', methods=['GET'])
+def api_get_groups():
+    """Get all favorite groups."""
+    fav_mgr = _get_favorites_manager()
+    groups = fav_mgr.get_groups()
+    return jsonify({
+        'groups': [g.to_dict() for g in groups],
+        'default_count': fav_mgr.get_default_count(),
+    })
+
+
+@bp.route('/api/groups', methods=['POST'])
+def api_create_group():
+    """Create a new favorite group."""
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'error': 'name required'}), 400
+
+    name = data['name']
+    emoji = data.get('emoji', '📁')
+    color = data.get('color', '#ff6600')
+
+    fav_mgr = _get_favorites_manager()
+    try:
+        group = fav_mgr.create_group(name, emoji, color)
+        return jsonify({'status': 'created', 'group': group.to_dict()}), 201
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 409
+
+
+@bp.route('/api/groups/<int:group_id>', methods=['PUT'])
+def api_update_group(group_id):
+    """Update a group."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    fav_mgr = _get_favorites_manager()
+    try:
+        fav_mgr.update_group(
+            group_id,
+            name=data.get('name'),
+            emoji=data.get('emoji'),
+            color=data.get('color')
+        )
+        group = fav_mgr.get_group_by_id(group_id)
+        return jsonify({'status': 'updated', 'group': group.to_dict() if group else None})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 409
+
+
+@bp.route('/api/groups/<int:group_id>', methods=['DELETE'])
+def api_delete_group(group_id):
+    """Delete a group and its favorites."""
+    fav_mgr = _get_favorites_manager()
+    deleted = fav_mgr.delete_group(group_id)
+
+    if deleted:
+        return jsonify({'status': 'deleted', 'group_id': group_id})
+    else:
+        return jsonify({'error': 'Group not found'}), 404
