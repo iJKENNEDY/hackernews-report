@@ -353,13 +353,22 @@
     <div class="sidebar-section" style="margin-top: 30px;">
         <h2>Filters</h2>
         <div class="filter-options">
-            <a href="{{ url_for('.index', ai_filter='off' if ai_filter == 'on' else 'on', category=current_category if current_category != 'search' else None, tag=current_tag) }}"
+            <a href="{{ url_for('.index', ai_filter='off' if ai_filter == 'on' else 'on', pdf_filter=pdf_filter, category=current_category if current_category != 'search' else None, tag=current_tag) }}"
                 class="filter-toggle"
                 style="display: block; padding: 10px; background: white; border-radius: 8px; text-decoration: none; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 {% if ai_filter == 'on' %}
                 <span style="color: green;">✅</span> AI Highlighting (On)
                 {% else %}
                 <span style="color: #ccc;">⬜</span> AI Highlighting (Off)
+                {% endif %}
+            </a>
+            <a href="{{ url_for('.index', pdf_filter='off' if pdf_filter == 'on' else 'on', ai_filter=ai_filter, category=current_category if current_category != 'search' else None, tag=current_tag) }}"
+                class="filter-toggle"
+                style="display: block; padding: 10px; background: white; border-radius: 8px; text-decoration: none; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 8px;">
+                {% if pdf_filter == 'on' %}
+                <span style="color: #e53935;">📄</span> Solo PDFs (On)
+                {% else %}
+                <span style="color: #ccc;">📄</span> Solo PDFs (Off)
                 {% endif %}
             </a>
         </div>

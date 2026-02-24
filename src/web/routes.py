@@ -41,6 +41,7 @@ def index():
     category_filter = request.args.get('category', None)
     tag_filter = request.args.get('tag', None)
     ai_filter = request.args.get('ai_filter', 'on')  # Default on
+    pdf_filter = request.args.get('pdf_filter', 'off')  # Default off
     selected_models = request.args.getlist('models')
     page = request.args.get('page', 1, type=int)
     
@@ -74,6 +75,10 @@ def index():
                         return True
             return False
         posts = [p for p in posts if matches_models(p)]
+
+    # Filter by PDF URLs
+    if pdf_filter == 'on':
+        posts = [p for p in posts if p.url and p.url.lower().endswith('.pdf')]
         
     # Apply AI Filter (Highlighting)
     if ai_filter == 'on':
@@ -126,6 +131,7 @@ def index():
         current_category=category_filter or 'all',
         current_tag=tag_filter,
         ai_filter=ai_filter,
+        pdf_filter=pdf_filter,
         model_filter_options=model_filter_options,
         selected_models=selected_models,
         page=page,
@@ -197,6 +203,7 @@ def favorites_page():
         current_category='favorites',
         current_tag=None,
         ai_filter='off',
+        pdf_filter='off',
         model_filter_options=model_filter_options,
         selected_models=[],
         page=page,
@@ -235,6 +242,7 @@ def search():
     tag_filter = request.args.get('tag', '')
     author_filter = request.args.get('author', '')
     ai_filter = request.args.get('ai_filter', 'on')
+    pdf_filter = request.args.get('pdf_filter', 'off')
     selected_models = request.args.getlist('models')
     page = request.args.get('page', 1, type=int)
     
@@ -271,6 +279,10 @@ def search():
                             return True
                 return False
             posts = [p for p in posts if matches_models(p)]
+
+        # Filter by PDF URLs
+        if pdf_filter == 'on':
+            posts = [p for p in posts if p.url and p.url.lower().endswith('.pdf')]
         
         # Apply highlighting for search terms (manual/pre-processing)
         if query_text:
@@ -331,6 +343,7 @@ def search():
         search_query=query_text,
         current_tag=tag_filter,
         ai_filter=ai_filter,
+        pdf_filter=pdf_filter,
         model_filter_options=TagSystem.get_model_filter_options(),
         selected_models=selected_models,
         page=page,
