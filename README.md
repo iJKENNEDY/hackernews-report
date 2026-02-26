@@ -1,6 +1,6 @@
 # Hackernews Report
 
-Una aplicación para obtener, categorizar, visualizar y reportar posts de Hacker News, disponible tanto en línea de comandos como en interfaz web moderna.
+Una aplicación para obtener, categorizar, visualizar y reportar posts de Hacker News, disponible tanto en línea de comandos, interfaz web moderna y como un **servidor MCP** (Model Context Protocol).
 
 ![Hacker News Report - Home](static/images/home.png)
 
@@ -18,6 +18,10 @@ Una aplicación para obtener, categorizar, visualizar y reportar posts de Hacker
   - **Highlighting de IA**: Resalta términos clave de IA automáticamente.
   - Sección de "Blogs de Investigación".
   - Exportación directa de reportes desde la UI.
+- 🤖 **Integración MCP (Model Context Protocol)**:
+  - Servidor compatible con FastMCP de Anthropic.
+  - Expone funciones a LLMs (Claude Desktop, Cursor) para buscar posts locales o traer nuevos desde la API.
+  - Herramientas añadidas para extraer detalles de post o explorar directamente en tu navegador local las URLs de interés sobre Inteligencia Artificial.
 - 🔄 Manejo robusto de errores con reintentos automáticos.
 - ✅ Suite completa de pruebas (unitarias, property-based, integración).
 
@@ -45,6 +49,10 @@ hackernews-report/
 │       ├── services.py     # Inyección de dependencias web
 │       ├── filters.py      # Filtros de template (fechas, markdown)
 │       └── db.py           # Gestión de conexión DB web
+├── mcp-hackernews/         # Servidor MCP de Hackernews-Report
+│   ├── pyproject.toml      # Configuración de paquete MCP
+│   ├── server.py           # Punto de entrada del servidor FastMCP
+│   └── README.md           # Instrucciones específicas de la integración MCP
 ├── templates/              # Templates HTML (Jinja2)
 ├── static/                 # CSS y Assets
 ├── tests/                  # Suite de pruebas
@@ -60,17 +68,19 @@ git clone <repository-url>
 cd hackernews-report
 ```
 
-1. Crear un entorno virtual e instalar dependencias:
+1. Crear un entorno virtual e instalar dependencias básicas:
 
 ```bash
-python -m venv venv
+python -m venv .venv
 # Windows:
-venv\Scripts\activate
+.venv\Scripts\activate
 # Linux/Mac:
-source venv/bin/activate
+source .venv/bin/activate
 
 pip install -r requirements.txt
 ```
+
+*(Opcional) Si quieres habilitar el servidor MCP, visita la sección de [Servidor MCP](#servidor-mcp) más abajo para instalar sus dependencias.*
 
 ## Uso
 
@@ -140,6 +150,21 @@ Accede a **<http://localhost:5000>** en tu navegador.
   - **Blogs de Investigación**: Enlaces rápidos a Google DeepMind, OpenAI, Anthropic.
   - **Exportar Reporte**: Botones para descargar la vista actual en MD, HTML, CSV, JSON.
 - **AI Highlight**: Toggle para resaltar términos de IA en los títulos.
+
+### Servidor MCP
+
+El proyecto ahora cuenta con un servidor integrado basado en FastMCP para exponer las funcionalidades a inteligencias artificiales locales, agentes y editores de código modernos (como Claude Desktop o Cursor).
+
+Para instalarlo (con el entorno virtual activado):
+
+```bash
+cd mcp-hackernews
+pip install -e .
+```
+
+Una vez instalado, el servidor registrará el comando global `mcp-hn` dentro de tu entorno de Python que puedes correr, enlazar en la app de Claude, o invocar directamente con compatibilidad `stdio`.
+
+Consulta todas las instrucciones específicas, incluyendo cómo enlazar las rutas absolutas dentro del `claude_desktop_config.json`, en el **[README del Subproyecto MCP](mcp-hackernews/README.md)`.
 
 ## API Endpoints
 
