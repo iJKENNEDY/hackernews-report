@@ -6,6 +6,7 @@ from src.models import Category, SearchQuery
 from src.tags import TagSystem
 from src.report_service import ReportFormat
 from src.favorites import FavoritesManager
+from src.personal_posts import PersonalPostsManager
 
 # Local imports
 from .db import get_db
@@ -669,3 +670,185 @@ def api_delete_group(group_id):
         return jsonify({'status': 'deleted', 'group_id': group_id})
     else:
         return jsonify({'error': 'Group not found'}), 404
+
+
+# ──────────── Personal Posts ────────────
+
+def _get_personal_manager() -> PersonalPostsManager:
+    """Get (or create) a PersonalPostsManager stored on Flask g."""
+    from flask import g
+    if 'personal_mgr' not in g:
+        from src.config import DB_PATH
+        import os
+        db_path = os.getenv('DB_PATH', DB_PATH)
+        g.personal_mgr = PersonalPostsManager(db_path)
+        g.personal_mgr.initialize_schema()
+    return g.personal_mgr
+
+
+@bp.teardown_app_request
+def _close_personal_mgr(exc=None):
+    from flask import g
+    mgr = g.pop('personal_mgr', None)
+    if mgr is not None:
+        mgr.close()
+
+
+@bp.route('/personal')
+def personal_posts_page():
+    """Page for personal posts management."""
+    mgr = _get_personal_manager()
+    fav_mgr = _get_favorites_manager()
+    db = get_db()
+
+    category_id = request.args.get('category_id', None, type=int)
+    tag_filter = request.args.get('tag', None)
+
+    posts = mgr.get_posts(category_id=category_id, tag=tag_filter)
+    categories_tree = mgr.get_categories_tree()
+    categories_flat = mgr.get_categories_flat()
+    all_tags = mgr.get_all_tags()
+
+    # Sidebar data shared with the base template
+    stats = db.get_category_counts()
+    fav_groups = fav_mgr.get_groups()
+    fav_default_count = fav_mgr.get_default_count()
+    fav_total_count = fav_mgr.get_total_count()
+    favorite_ids = set(fav_mgr.get_all_favorite_post_ids())
+    all_hn_tags = TagSystem.get_all_tags()
+    model_filter_options = TagSystem.get_model_filter_options()
+
+    return render_template(
+        'personal_posts.html',
+        personal_posts=posts,
+        categories_tree=categories_tree,
+        categories_flat=categories_flat,
+        all_tags=all_tags,
+        current_category_id=category_id,
+        current_tag=tag_filter,
+        # Shared sidebar
+        stats=stats,
+        fav_groups=fav_groups,
+        fav_default_count=fav_default_count,
+        fav_total_count=fav_total_count,
+        favorite_ids=favorite_ids,
+        all_hn_tags=all_hn_tags,
+        model_filter_options=model_filter_options,
+        current_category='personal',
+        ai_filter='off',
+        pdf_filter='off',
+        selected_models=[],
+    )
+
+
+# ── Personal Posts API ──────────────────
+
+@bp.route('/api/personal/posts', methods=['GET'])
+def api_personal_posts_list():
+    mgr = _get_personal_manager()
+    category_id = request.args.get('category_id', None, type=int)
+    tag = request.args.get('tag', None)
+    source = request.args.get('source', None)
+    posts = mgr.get_posts(category_id=category_id, tag=tag, source=source)
+    return jsonify({'posts': [p.to_dict() for p in posts], 'count': len(posts)})
+
+
+@bp.route('/api/personal/posts', methods=['POST'])
+def api_personal_posts_create():
+    data = request.get_json()
+    if not data or not data.get('title', '').strip():
+        return jsonify({'error': 'title is required'}), 400
+    mgr = _get_personal_manager()
+    tags = [t.strip() for t in data.get('tags', '').split(',') if t.strip()]
+    post = mgr.create_post(
+        title=data['title'],
+        url=data.get('url') or None,
+        category_id=data.get('category_id') or None,
+        tags=tags,
+        description=data.get('description', ''),
+        source=data.get('source', 'personal'),
+    )
+    return jsonify({'status': 'created', 'post': post.to_dict()}), 201
+
+
+@bp.route('/api/personal/posts/<int:post_id>', methods=['PUT'])
+def api_personal_posts_update(post_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    mgr = _get_personal_manager()
+    tags = None
+    if 'tags' in data:
+        tags = [t.strip() for t in data['tags'].split(',') if t.strip()]
+    ok = mgr.update_post(
+        post_id,
+        title=data.get('title'),
+        url=data.get('url'),
+        category_id=data.get('category_id'),
+        tags=tags,
+        description=data.get('description'),
+        source=data.get('source'),
+    )
+    if not ok:
+        return jsonify({'error': 'Post not found'}), 404
+    post = mgr.get_post_by_id(post_id)
+    return jsonify({'status': 'updated', 'post': post.to_dict()})
+
+
+@bp.route('/api/personal/posts/<int:post_id>', methods=['DELETE'])
+def api_personal_posts_delete(post_id):
+    mgr = _get_personal_manager()
+    if mgr.delete_post(post_id):
+        return jsonify({'status': 'deleted', 'post_id': post_id})
+    return jsonify({'error': 'Post not found'}), 404
+
+
+# ── Personal Categories API ─────────────
+
+@bp.route('/api/personal/categories', methods=['GET'])
+def api_personal_categories_list():
+    mgr = _get_personal_manager()
+    tree = mgr.get_categories_tree()
+    return jsonify({'categories': [c.to_dict() for c in tree]})
+
+
+@bp.route('/api/personal/categories', methods=['POST'])
+def api_personal_categories_create():
+    data = request.get_json()
+    if not data or not data.get('name', '').strip():
+        return jsonify({'error': 'name is required'}), 400
+    mgr = _get_personal_manager()
+    cat = mgr.create_category(
+        name=data['name'],
+        emoji=data.get('emoji', '📁'),
+        color=data.get('color', '#ff6600'),
+        parent_id=data.get('parent_id') or None,
+    )
+    return jsonify({'status': 'created', 'category': cat.to_dict()}), 201
+
+
+@bp.route('/api/personal/categories/<int:cat_id>', methods=['PUT'])
+def api_personal_categories_update(cat_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    mgr = _get_personal_manager()
+    ok = mgr.update_category(
+        cat_id,
+        name=data.get('name'),
+        emoji=data.get('emoji'),
+        color=data.get('color'),
+        parent_id=data.get('parent_id'),
+    )
+    if not ok:
+        return jsonify({'error': 'Category not found'}), 404
+    cat = mgr.get_category_by_id(cat_id)
+    return jsonify({'status': 'updated', 'category': cat.to_dict() if cat else None})
+
+
+@bp.route('/api/personal/categories/<int:cat_id>', methods=['DELETE'])
+def api_personal_categories_delete(cat_id):
+    mgr = _get_personal_manager()
+    if mgr.delete_category(cat_id):
+        return jsonify({'status': 'deleted', 'category_id': cat_id})
+    return jsonify({'error': 'Category not found'}), 404

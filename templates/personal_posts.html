@@ -1,0 +1,527 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Posts Personales – Hacker News Report{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Tab switching (shared with index via sessionStorage) ──────────────────
+    const TABS = ['tab-hn', 'tab-personal'];
+    const tabBar = document.getElementById('main-tab-bar');
+    if (tabBar) {
+        tabBar.querySelectorAll('.main-tab-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const target = this.dataset.tab;
+                if (target === 'tab-hn') window.location.href = '/';
+                // already on personal page if target === 'tab-personal'
+            });
+        });
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let editingId = null; // null = create mode, int = edit mode
+    let categoriesCache = [];  // flat list from API
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const postsList      = document.getElementById('personal-posts-list');
+    const formPanel      = document.getElementById('personal-form-panel');
+    const formTitle      = document.getElementById('form-panel-title');
+    const btnNewPost     = document.getElementById('btn-new-personal-post');
+    const btnCancelForm  = document.getElementById('btn-cancel-personal-form');
+    const postForm       = document.getElementById('personal-post-form');
+
+    const fTitle        = document.getElementById('fp-title');
+    const fUrl          = document.getElementById('fp-url');
+    const fCategory     = document.getElementById('fp-category');
+    const fTags         = document.getElementById('fp-tags');
+    const fDesc         = document.getElementById('fp-description');
+    const fSource       = document.getElementById('fp-source');
+    const fDate         = document.getElementById('fp-date');
+
+    const catModal      = document.getElementById('cat-modal-overlay');
+    const btnOpenCat    = document.getElementById('btn-manage-categories');
+    const btnCloseCat   = document.getElementById('btn-close-cat-modal');
+    const catForm       = document.getElementById('cat-create-form');
+    const catList       = document.getElementById('cat-modal-list');
+    const catParentSel  = document.getElementById('cat-parent-select');
+    const catName       = document.getElementById('cat-name-input');
+    const catEmoji      = document.getElementById('cat-emoji-input');
+    const catColor      = document.getElementById('cat-color-input');
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function formatDate(ts) {
+        if (!ts) return '—';
+        return new Date(ts * 1000).toLocaleDateString('es-ES', {
+            year: 'numeric', month: 'short', day: 'numeric'
+        });
+    }
+
+    function sourceBadgeHtml(source) {
+        const map = { personal: { label: '🖊️ Personal', cls: 'src-personal' },
+                      hn:       { label: '🟠 HN',       cls: 'src-hn' },
+                      example:  { label: '📌 Ejemplo',  cls: 'src-example' } };
+        const s = map[source] || map.personal;
+        return `<span class="source-badge ${s.cls}">${s.label}</span>`;
+    }
+
+    function tagsHtml(tags) {
+        if (!tags || !tags.length) return '';
+        return `<div class="post-tags">${tags.map(t =>
+            `<span class="post-tag personal-tag">${t}</span>`).join('')}</div>`;
+    }
+
+    function categoryBreadcrumb(post) {
+        if (!post.category_name) return '';
+        let crumb = `<span style="color: ${post.category_color || '#ff6600'}">${post.category_emoji || '📁'} ${post.category_name}</span>`;
+        if (post.parent_category_name) {
+            crumb = `<span style="opacity:.7">${post.parent_category_name} /</span> ` + crumb;
+        }
+        return `<span class="pp-cat-badge">${crumb}</span>`;
+    }
+
+    // ── Render posts list ─────────────────────────────────────────────────────
+    function renderPosts(posts) {
+        if (!postsList) return;
+        if (!posts.length) {
+            postsList.innerHTML = `
+                <div class="empty-state">
+                    <h3>Sin posts personales</h3>
+                    <p>Haz clic en <strong>+ Agregar Post</strong> para crear tu primer post.</p>
+                </div>`;
+            return;
+        }
+        postsList.innerHTML = posts.map(p => `
+            <article class="post-card personal-post-card" data-id="${p.id}">
+                <div class="post-header">
+                    <h3 class="post-title">
+                        ${p.url
+                            ? `<a href="${escHtml(p.url)}" target="_blank" rel="noopener">${escHtml(p.title)}</a><span class="external-link">↗</span>`
+                            : `<span>${escHtml(p.title)}</span>`}
+                    </h3>
+                    <div class="post-actions-row">
+                        ${sourceBadgeHtml(p.source)}
+                        ${categoryBreadcrumb(p)}
+                    </div>
+                </div>
+                <div class="post-meta">
+                    <span class="post-date">📅 ${formatDate(p.date_added)}</span>
+                    ${p.url ? `<span class="post-url-inline">🔗 <a href="${escHtml(p.url)}" target="_blank">${escHtml(p.url.slice(0,60))}${p.url.length>60?'…':''}</a></span>` : ''}
+                </div>
+                ${tagsHtml(p.tags)}
+                ${p.description ? `<p class="pp-description">${escHtml(p.description)}</p>` : ''}
+                <div class="pp-card-actions">
+                    <button class="pp-edit-btn" data-id="${p.id}" title="Editar">✏️ Editar</button>
+                    <button class="pp-delete-btn" data-id="${p.id}" title="Eliminar">🗑️ Eliminar</button>
+                </div>
+            </article>`).join('');
+
+        // Attach handlers
+        postsList.querySelectorAll('.pp-edit-btn').forEach(btn =>
+            btn.addEventListener('click', () => openEditForm(parseInt(btn.dataset.id))));
+        postsList.querySelectorAll('.pp-delete-btn').forEach(btn =>
+            btn.addEventListener('click', () => deletePost(parseInt(btn.dataset.id))));
+    }
+
+    function escHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Load posts from API ───────────────────────────────────────────────────
+    async function loadPosts(params = '') {
+        try {
+            const res = await fetch('/api/personal/posts' + (params ? '?' + params : ''));
+            const data = await res.json();
+            renderPosts(data.posts || []);
+        } catch (e) {
+            console.error('Load personal posts failed:', e);
+        }
+    }
+
+    // ── Form open / close ─────────────────────────────────────────────────────
+    function openCreateForm() {
+        editingId = null;
+        formTitle.textContent = '➕ Agregar Post Personal';
+        postForm.reset();
+        fDate.value = new Date().toLocaleDateString('es-ES');
+        fSource.value = 'personal';
+        populateCategorySelect();
+        formPanel.classList.add('open');
+        fTitle.focus();
+    }
+
+    async function openEditForm(id) {
+        try {
+            const res = await fetch('/api/personal/posts?source=');  // get all
+            // We fetch all and filter by id (simpler; could use a /api/personal/posts/:id endpoint)
+            const data = await res.json();
+            const post = (data.posts || []).find(p => p.id === id);
+            if (!post) return;
+            editingId = id;
+            formTitle.textContent = '✏️ Editar Post Personal';
+            fTitle.value = post.title || '';
+            fUrl.value = post.url || '';
+            fDate.value = formatDate(post.date_added);
+            fTags.value = (post.tags || []).join(', ');
+            fDesc.value = post.description || '';
+            fSource.value = post.source || 'personal';
+            populateCategorySelect(post.category_id);
+            formPanel.classList.add('open');
+            fTitle.focus();
+        } catch(e) {
+            console.error('Open edit form failed:', e);
+        }
+    }
+
+    function closeForm() {
+        formPanel.classList.remove('open');
+        editingId = null;
+        postForm.reset();
+    }
+
+    // ── Form submit ───────────────────────────────────────────────────────────
+    postForm && postForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const catVal = fCategory.value;
+        const payload = {
+            title: fTitle.value.trim(),
+            url: fUrl.value.trim() || null,
+            category_id: catVal ? parseInt(catVal) : null,
+            tags: fTags.value,
+            description: fDesc.value.trim(),
+            source: fSource.value,
+        };
+        if (!payload.title) { fTitle.focus(); return; }
+
+        try {
+            let res;
+            if (editingId) {
+                res = await fetch(`/api/personal/posts/${editingId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                });
+            } else {
+                res = await fetch('/api/personal/posts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                });
+            }
+            if (res.ok) {
+                closeForm();
+                loadPosts();
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Error al guardar');
+            }
+        } catch(err) {
+            console.error('Save post failed:', err);
+        }
+    });
+
+    // ── Delete ────────────────────────────────────────────────────────────────
+    async function deletePost(id) {
+        if (!confirm('¿Eliminar este post personal?')) return;
+        try {
+            await fetch(`/api/personal/posts/${id}`, {method: 'DELETE'});
+            loadPosts();
+        } catch(e) { console.error('Delete failed:', e); }
+    }
+
+    // ── Button wires ──────────────────────────────────────────────────────────
+    btnNewPost  && btnNewPost.addEventListener('click', openCreateForm);
+    btnCancelForm && btnCancelForm.addEventListener('click', closeForm);
+
+    // ── Categories: populate select ───────────────────────────────────────────
+    async function loadCategoriesCache() {
+        try {
+            const res = await fetch('/api/personal/categories');
+            const data = await res.json();
+            // Flatten tree
+            categoriesCache = [];
+            function flatten(cats, prefix='') {
+                (cats||[]).forEach(c => {
+                    categoriesCache.push({...c, label: prefix + c.emoji + ' ' + c.name});
+                    if (c.children && c.children.length) flatten(c.children, prefix + '    ');
+                });
+            }
+            flatten(data.categories || []);
+        } catch(e) { console.error('Load categories failed', e); }
+    }
+
+    function populateCategorySelect(selectedId = null) {
+        if (!fCategory) return;
+        const opts = categoriesCache.map(c =>
+            `<option value="${c.id}" ${selectedId == c.id ? 'selected' : ''}>${c.label}</option>`
+        ).join('');
+        fCategory.innerHTML = '<option value="">-- Sin categoría --</option>' + opts;
+    }
+
+    // ── Category Modal ────────────────────────────────────────────────────────
+    btnOpenCat && btnOpenCat.addEventListener('click', (e) => {
+        e.preventDefault();
+        catModal.classList.add('open');
+        renderCatModal();
+    });
+    btnCloseCat && btnCloseCat.addEventListener('click', () => catModal.classList.remove('open'));
+    catModal && catModal.addEventListener('click', e => {
+        if (e.target === catModal) catModal.classList.remove('open');
+    });
+
+    async function renderCatModal() {
+        await loadCategoriesCache();
+        // Populate parent select in create form
+        if (catParentSel) {
+            catParentSel.innerHTML = '<option value="">-- Raíz (sin padre) --</option>'
+                + categoriesCache
+                    .filter(c => c.parent_id == null) // only roots as parents for now
+                    .map(c => `<option value="${c.id}">${c.emoji} ${c.name}</option>`)
+                    .join('');
+        }
+        // Render list
+        if (!catList) return;
+        if (categoriesCache.length === 0) {
+            catList.innerHTML = '<p class="no-groups-msg">No hay categorías aún.</p>';
+            return;
+        }
+        catList.innerHTML = categoriesCache.map(c => `
+            <div class="modal-group-item cat-row" data-id="${c.id}">
+                <span class="modal-group-emoji">${c.emoji}</span>
+                <span class="modal-group-name" style="color:${c.color}">${c.name}</span>
+                <span class="modal-group-count" style="opacity:.5">${c.parent_id ? '↳ sub' : 'root'}</span>
+                <button class="modal-group-delete cat-delete-btn" data-id="${c.id}" title="Eliminar">🗑️</button>
+            </div>`).join('');
+
+        catList.querySelectorAll('.cat-delete-btn').forEach(btn =>
+            btn.addEventListener('click', async function() {
+                if (!confirm('¿Eliminar esta categoría? Los subcategorías también se eliminarán.')) return;
+                await fetch(`/api/personal/categories/${btn.dataset.id}`, {method: 'DELETE'});
+                renderCatModal();
+                await loadCategoriesCache();
+                populateCategorySelect();
+            })
+        );
+    }
+
+    catForm && catForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const name = catName.value.trim();
+        if (!name) return;
+        const payload = {
+            name,
+            emoji: catEmoji.value || '📁',
+            color: catColor.value || '#ff6600',
+            parent_id: catParentSel && catParentSel.value ? parseInt(catParentSel.value) : null,
+        };
+        try {
+            const res = await fetch('/api/personal/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+                catName.value = '';
+                catEmoji.value = '📁';
+                await renderCatModal();
+                await loadCategoriesCache();
+                populateCategorySelect();
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Error al crear categoría');
+            }
+        } catch(e) { console.error('Create cat failed:', e); }
+    });
+
+    // ── Sidebar category filter ───────────────────────────────────────────────
+    document.querySelectorAll('.pp-cat-filter-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const catId = this.dataset.catId || '';
+            const tag = this.dataset.tag || '';
+            let params = '';
+            if (catId) params += `category_id=${catId}`;
+            if (tag) params += `${params?'&':''}tag=${encodeURIComponent(tag)}`;
+            loadPosts(params);
+            // Update active state
+            document.querySelectorAll('.pp-cat-filter-link').forEach(l => l.parentElement.classList.remove('active'));
+            this.parentElement.classList.add('active');
+        });
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    loadCategoriesCache().then(() => populateCategorySelect());
+    loadPosts();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="sidebar">
+    {# ──── Personal Categories Sidebar ──── #}
+    <div class="sidebar-section">
+        <h2>📋 Mis Posts</h2>
+        <div class="category-list">
+            <div class="category-item {% if not current_category_id and not current_tag %}active{% endif %}">
+                <a href="/personal" class="pp-cat-filter-link" data-cat-id="" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
+                    <span class="category-name">📋 Todos</span>
+                    <span class="category-count">{{ personal_posts | length }}</span>
+                </a>
+            </div>
+            {% for cat in categories_tree %}
+            <div class="category-item {% if current_category_id == cat.id %}active{% endif %}">
+                <a href="/personal?category_id={{ cat.id }}" class="pp-cat-filter-link" data-cat-id="{{ cat.id }}" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
+                    <span class="category-name">{{ cat.emoji }} {{ cat.name }}</span>
+                </a>
+            </div>
+            {% if cat.children %}
+            {% for sub in cat.children %}
+            <div class="category-item pp-subcategory {% if current_category_id == sub.id %}active{% endif %}">
+                <a href="/personal?category_id={{ sub.id }}" class="pp-cat-filter-link" data-cat-id="{{ sub.id }}" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
+                    <span class="category-name" style="padding-left:12px">↳ {{ sub.emoji }} {{ sub.name }}</span>
+                </a>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endfor %}
+        </div>
+        <button id="btn-manage-categories" class="manage-groups-btn" style="margin-top:10px">
+            ⚙️ Gestionar Categorías
+        </button>
+    </div>
+
+    {% if all_tags %}
+    <h2 style="margin-top:24px">Tags</h2>
+    <div class="tag-cloud">
+        {% for tag in all_tags %}
+        <a href="/personal?tag={{ tag }}" class="tag-item {% if current_tag == tag %}active{% endif %}">{{ tag }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ──── HN Categories (for reference) ──── #}
+    <h2 style="margin-top:24px">HN Categories</h2>
+    <div class="category-list">
+        <a href="/" class="category-item">
+            <span class="category-name">📖 Stories</span>
+            <span class="category-count">{{ stats.get('story', 0) }}</span>
+        </a>
+        <a href="/?category=job" class="category-item">
+            <span class="category-name">💼 Jobs</span>
+            <span class="category-count">{{ stats.get('job', 0) }}</span>
+        </a>
+        <a href="/?category=ask" class="category-item">
+            <span class="category-name">❓ Ask HN</span>
+            <span class="category-count">{{ stats.get('ask', 0) }}</span>
+        </a>
+    </div>
+</div>
+
+{# ──── Main Content ──── #}
+<div class="main-content">
+    {# ── Tab bar ── #}
+    <div id="main-tab-bar" class="main-tab-bar">
+        <button class="main-tab-btn" data-tab="tab-hn">🟠 Post HN</button>
+        <button class="main-tab-btn active" data-tab="tab-personal">🖊️ Post Personal</button>
+    </div>
+
+    {# ── Header row ── #}
+    <div class="header-section" style="margin-top:12px">
+        <h2>🖊️ Mis Posts Personales</h2>
+        <div class="header-actions" style="display:flex;align-items:center;gap:14px">
+            <button id="btn-new-personal-post" class="refresh-btn" style="background:#2563eb">
+                <span class="btn-icon">➕</span>
+                <span class="btn-text">Agregar Post</span>
+            </button>
+        </div>
+    </div>
+
+    {# ── Inline create / edit form panel ── #}
+    <div id="personal-form-panel" class="personal-form-panel">
+        <div class="personal-form-header">
+            <h3 id="form-panel-title">➕ Agregar Post Personal</h3>
+            <button id="btn-cancel-personal-form" class="modal-close" title="Cerrar">✕</button>
+        </div>
+        <form id="personal-post-form" class="personal-form">
+            <div class="pf-grid">
+                <div class="pf-field pf-field-wide">
+                    <label for="fp-title">Título <span class="req">*</span></label>
+                    <input id="fp-title" type="text" placeholder="Título del post..." required maxlength="300">
+                </div>
+                <div class="pf-field pf-field-wide">
+                    <label for="fp-url">Link / URL</label>
+                    <input id="fp-url" type="url" placeholder="https://...">
+                </div>
+                <div class="pf-field">
+                    <label for="fp-category">Categoría</label>
+                    <select id="fp-category">
+                        <option value="">-- Sin categoría --</option>
+                    </select>
+                </div>
+                <div class="pf-field">
+                    <label for="fp-source">Fuente</label>
+                    <select id="fp-source">
+                        <option value="personal">🖊️ Personal</option>
+                        <option value="hn">🟠 Hacker News</option>
+                        <option value="example">📌 Ejemplo</option>
+                    </select>
+                </div>
+                <div class="pf-field">
+                    <label for="fp-date">Fecha (auto)</label>
+                    <input id="fp-date" type="text" readonly class="pf-readonly">
+                </div>
+                <div class="pf-field">
+                    <label for="fp-tags">Tags de filtro <span class="pf-hint">(separados por coma)</span></label>
+                    <input id="fp-tags" type="text" placeholder="python, ai, tutorial...">
+                </div>
+                <div class="pf-field pf-field-full">
+                    <label for="fp-description">Descripción / Comentario <span class="pf-hint">(opcional)</span></label>
+                    <textarea id="fp-description" rows="3" placeholder="Notas o comentarios sobre este post..."></textarea>
+                </div>
+            </div>
+            <div class="pf-actions">
+                <button type="submit" class="pf-save-btn">💾 Guardar</button>
+                <button type="button" id="btn-cancel-personal-form" class="pf-cancel-btn">Cancelar</button>
+            </div>
+        </form>
+    </div>
+
+    {# ── Posts list ── #}
+    <div id="personal-posts-list" class="posts-list list-view" style="margin-top:16px">
+        <div class="empty-state">
+            <p>Cargando...</p>
+        </div>
+    </div>
+</div>
+
+{# ──── Category Management Modal ──── #}
+<div id="cat-modal-overlay" class="modal-overlay">
+    <div class="modal-content" style="max-width:540px">
+        <div class="modal-header">
+            <h3>⚙️ Gestionar Categorías Personales</h3>
+            <button id="btn-close-cat-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="cat-create-form" class="create-group-form">
+                <p style="font-size:13px;margin-bottom:10px;opacity:.7">Crear nueva categoría o subcategoría:</p>
+                <div class="form-row">
+                    <input type="text" id="cat-emoji-input" class="form-input emoji-input" value="📁" maxlength="4" title="Emoji">
+                    <input type="text" id="cat-name-input" class="form-input" placeholder="Nombre..." required maxlength="60" style="flex:1">
+                    <input type="color" id="cat-color-input" class="form-input color-input" value="#ff6600" title="Color">
+                </div>
+                <div class="form-row" style="margin-top:8px">
+                    <label style="font-size:13px;white-space:nowrap;align-self:center">Subcategoría de:</label>
+                    <select id="cat-parent-select" class="form-input" style="flex:1">
+                        <option value="">-- Raíz (sin padre) --</option>
+                    </select>
+                    <button type="submit" class="create-group-btn">+ Crear</button>
+                </div>
+            </form>
+            <div id="cat-modal-list" class="modal-groups-list" style="margin-top:16px">
+                <p class="no-groups-msg">Cargando...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

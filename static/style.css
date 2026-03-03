@@ -1789,3 +1789,380 @@ body.dark .modal-group-count {
 body.dark .no-groups-msg {
     color: #5a6a7e;
 }
+
+
+/* =====================================================================
+   PERSONAL POSTS – Tab Bar, Form Panel, Cards, Category Modal
+   ===================================================================== */
+
+/* ── Tab Bar ─────────────────────────────────────────────────────────── */
+.main-tab-bar {
+    display: flex;
+    gap: 4px;
+    background: #fff;
+    border-radius: 10px 10px 0 0;
+    padding: 6px 8px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    border-bottom: 2px solid #ff6600;
+}
+
+.main-tab-btn {
+    padding: 9px 22px;
+    border: none;
+    background: transparent;
+    border-radius: 7px 7px 0 0;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #666;
+    transition: background .2s, color .2s;
+}
+
+.main-tab-btn:hover {
+    background: #fff3e0;
+    color: #ff6600;
+}
+
+.main-tab-btn.active {
+    background: #ff6600;
+    color: #fff;
+}
+
+/* ── Inline form panel ───────────────────────────────────────────────── */
+.personal-form-panel {
+    display: none;
+    background: #fff;
+    border: 1px solid #ffe0b2;
+    border-radius: 0 10px 10px 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(255,102,0,.08);
+    animation: slideDown .25s ease;
+}
+
+.personal-form-panel.open {
+    display: block;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.personal-form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.personal-form-header h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+/* ── Form grid ───────────────────────────────────────────────────────── */
+.pf-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+}
+
+.pf-field { display: flex; flex-direction: column; gap: 4px; }
+.pf-field-wide { grid-column: 1 / -1; }
+.pf-field-full { grid-column: 1 / -1; }
+
+.pf-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.pf-field input,
+.pf-field select,
+.pf-field textarea {
+    padding: 9px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fafafa;
+    transition: border-color .2s, box-shadow .2s;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.pf-field input:focus,
+.pf-field select:focus,
+.pf-field textarea:focus {
+    outline: none;
+    border-color: #ff6600;
+    box-shadow: 0 0 0 3px rgba(255,102,0,.12);
+    background: #fff;
+}
+
+.pf-readonly { background: #f0f0f0 !important; color: #888 !important; cursor: default; }
+
+.pf-hint { font-size: 10px; color: #aaa; font-weight: 400; text-transform: none; }
+.req { color: #e53935; }
+
+.pf-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    justify-content: flex-end;
+}
+
+.pf-save-btn {
+    padding: 9px 22px;
+    background: #ff6600;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+}
+.pf-save-btn:hover { background: #e65c00; transform: translateY(-1px); }
+
+.pf-cancel-btn {
+    padding: 9px 18px;
+    background: #f5f5f5;
+    color: #555;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background .2s;
+}
+.pf-cancel-btn:hover { background: #ececec; }
+
+/* ── Personal post cards ─────────────────────────────────────────────── */
+.personal-post-card {
+    border-left: 4px solid #ff6600;
+}
+
+.pp-description {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+    padding: 8px 10px;
+    background: #fafafa;
+    border-radius: 6px;
+    border-left: 3px solid #ffcc99;
+}
+
+.pp-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.pp-edit-btn, .pp-delete-btn {
+    padding: 5px 14px;
+    border: none;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+}
+
+.pp-edit-btn {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+.pp-edit-btn:hover { background: #bbdefb; transform: translateY(-1px); }
+
+.pp-delete-btn {
+    background: #fce4ec;
+    color: #c62828;
+}
+.pp-delete-btn:hover { background: #ffcdd2; transform: translateY(-1px); }
+
+/* ── Source badges ───────────────────────────────────────────────────── */
+.source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.src-personal { background: #e8f5e9; color: #2e7d32; }
+.src-hn       { background: #fff3e0; color: #e65100; }
+.src-example  { background: #ede7f6; color: #512da8; }
+
+/* ── Category breadcrumb badge ──────────────────────────────────────── */
+.pp-cat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: #f5f5f5;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+/* ── Personal tag (inline) ──────────────────────────────────────────── */
+.personal-tag {
+    background: #e3f2fd;
+    color: #1565c0;
+    border-color: #bbdefb;
+}
+
+/* ── Sidebar subcategory indent ─────────────────────────────────────── */
+.pp-subcategory .category-name {
+    font-size: 13px;
+    opacity: .85;
+}
+
+/* ── Post URL inline ────────────────────────────────────────────────── */
+.post-url-inline {
+    font-size: 12px;
+    color: #999;
+}
+.post-url-inline a {
+    color: #999;
+    text-decoration: none;
+}
+.post-url-inline a:hover { color: #ff6600; }
+
+
+/* =====================================================================
+   DARK MODE – Personal Posts additions
+   ===================================================================== */
+
+/* Tab bar */
+body.dark .main-tab-bar {
+    background: #0b1220;
+    border-bottom-color: #ff8a1f;
+    box-shadow: none;
+}
+
+body.dark .main-tab-btn {
+    color: #8896a8;
+}
+
+body.dark .main-tab-btn:hover {
+    background: #162033;
+    color: #ffb86b;
+}
+
+body.dark .main-tab-btn.active {
+    background: #ff8a1f;
+    color: #fff;
+}
+
+/* Form panel */
+body.dark .personal-form-panel {
+    background: #0b1220;
+    border-color: #1e293b;
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+
+body.dark .personal-form-header h3 {
+    color: #f1f5f9;
+}
+
+body.dark .pf-field label {
+    color: #8896a8;
+}
+
+body.dark .pf-field input,
+body.dark .pf-field select,
+body.dark .pf-field textarea {
+    background: #071026;
+    border-color: #1e293b;
+    color: #f1f5f9;
+}
+
+body.dark .pf-field input:focus,
+body.dark .pf-field select:focus,
+body.dark .pf-field textarea:focus {
+    border-color: #ff8a1f;
+    box-shadow: 0 0 0 3px rgba(255,138,31,.15);
+    background: #0b1220;
+}
+
+body.dark .pf-field input::placeholder,
+body.dark .pf-field textarea::placeholder {
+    color: #5a6a7e;
+}
+
+body.dark .pf-readonly {
+    background: #071026 !important;
+    color: #5a6a7e !important;
+}
+
+body.dark .pf-save-btn {
+    background: #ff8a1f;
+}
+body.dark .pf-save-btn:hover { background: #ff6600; }
+
+body.dark .pf-cancel-btn {
+    background: #0b1220;
+    color: #8896a8;
+    border-color: #1e293b;
+}
+body.dark .pf-cancel-btn:hover { background: #162033; }
+
+/* Cards */
+body.dark .personal-post-card {
+    border-left-color: #ff8a1f;
+}
+
+body.dark .pp-description {
+    background: #071026;
+    color: #8896a8;
+    border-left-color: #1e293b;
+}
+
+body.dark .pp-card-actions {
+    border-top-color: #162033;
+}
+
+body.dark .pp-edit-btn {
+    background: #0d2137;
+    color: #64b5f6;
+}
+body.dark .pp-edit-btn:hover { background: #0a1a2e; }
+
+body.dark .pp-delete-btn {
+    background: #1a0d0d;
+    color: #ef9a9a;
+}
+body.dark .pp-delete-btn:hover { background: #200f0f; }
+
+/* Source badges */
+body.dark .src-personal { background: #0d1f12; color: #81c784; }
+body.dark .src-hn       { background: #271a0d; color: #ffb74d; }
+body.dark .src-example  { background: #1a1227; color: #ce93d8; }
+
+/* Category badge */
+body.dark .pp-cat-badge {
+    background: #0b1220;
+    border: 1px solid #1e293b;
+}
+
+/* Personal tags */
+body.dark .personal-tag {
+    background: #0d2137;
+    color: #64b5f6;
+    border-color: #0d2d4a;
+}
+
+/* Post URL inline */
+body.dark .post-url-inline,
+body.dark .post-url-inline a { color: #5a6a7e; }
+body.dark .post-url-inline a:hover { color: #ff8a1f; }
