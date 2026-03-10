@@ -13,6 +13,7 @@ description: generar reportes de posts seleccionados.
     - 🆔 **IDs** específicos.
     - 🔍 **Criterios de búsqueda** o filtros activos.
     - 📂 **Categorías** o 🏷️ **Tags**.
+    - ⭐ **Grupos de Favoritos** (Soporta jerarquías/sub-grupos).
 
 2.  **📄 Generación de Resumen**
     Estructurar un resumen detallado que incluya:
@@ -29,8 +30,12 @@ description: generar reportes de posts seleccionados.
     - 📝 **Markdown:** Para documentación técnica y lecturabilidad.
     - 📊 **CSV:** Para análisis de datos estructurados.
     - 📄 **TXT:** Para portabilidad simple.
+    - 💻 **JSON:** Para integración programática e interoperabilidad.
 
-4.  **⚙️ Personalización Modular**
+4.  **⚙️ Multi-idioma (i18n)**
+    Los reportes pueden beneficiarse del esquema bilingüe del proyecto (🇪🇸 Español / 🇺🇸 Inglés), respetando la configuración del reporte si el usuario lo requiere.
+
+5.  **⚙️ Personalización Modular**
     Habilitar secciones configurables por el usuario:
     - 📑 **Resumen General:** Visión de alto nivel.
     - 📎 **Posts Seleccionados:** Detalle granular.
