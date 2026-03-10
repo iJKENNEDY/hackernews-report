@@ -140,6 +140,8 @@ class Post:
         
         # Categorize the post
         category = categorize_post(post_type)
+        if title.startswith("Ask HN") or title.startswith("Show HN"):
+            category = Category.ASK
         
         # Extract tags from title
         tags = TagSystem.extract_tags(title)

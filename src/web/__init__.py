@@ -50,4 +50,9 @@ def create_app(test_config=None):
     from . import filters
     filters.register_filters(app)
 
+    from .i18n import gettext, get_locale
+    @app.context_processor
+    def inject_i18n():
+        return dict(_=gettext, current_lang=get_locale())
+
     return app

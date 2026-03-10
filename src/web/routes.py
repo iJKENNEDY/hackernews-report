@@ -630,10 +630,15 @@ def api_create_group():
     name = data['name']
     emoji = data.get('emoji', '📁')
     color = data.get('color', '#ff6600')
+    parent_id = data.get('parent_id')
+    if parent_id == '':
+        parent_id = None
+    if parent_id is not None:
+        parent_id = int(parent_id)
 
     fav_mgr = _get_favorites_manager()
     try:
-        group = fav_mgr.create_group(name, emoji, color)
+        group = fav_mgr.create_group(name, emoji, color, parent_id=parent_id)
         return jsonify({'status': 'created', 'group': group.to_dict()}), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 409
@@ -648,11 +653,18 @@ def api_update_group(group_id):
 
     fav_mgr = _get_favorites_manager()
     try:
+        parent_id = data.get('parent_id', -1)
+        if parent_id == '':
+            parent_id = None
+        elif parent_id != -1 and parent_id is not None:
+            parent_id = int(parent_id)
+
         fav_mgr.update_group(
             group_id,
             name=data.get('name'),
             emoji=data.get('emoji'),
-            color=data.get('color')
+            color=data.get('color'),
+            parent_id=parent_id
         )
         group = fav_mgr.get_group_by_id(group_id)
         return jsonify({'status': 'updated', 'group': group.to_dict() if group else None})

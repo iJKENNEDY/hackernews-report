@@ -15,6 +15,7 @@ class FavoriteGroup:
     color: str = "#ff6600"
     created_at: int = 0
     post_count: int = 0
+    parent_id: Optional[int] = None
 
     def to_dict(self) -> dict:
         return {
@@ -24,7 +25,9 @@ class FavoriteGroup:
             'color': self.color,
             'created_at': self.created_at,
             'post_count': self.post_count,
+            'parent_id': self.parent_id,
         }
+
 
 
 @dataclass
@@ -71,9 +74,17 @@ class FavoritesManager:
                 name TEXT NOT NULL UNIQUE,
                 emoji TEXT DEFAULT '📁',
                 color TEXT DEFAULT '#ff6600',
-                created_at INTEGER NOT NULL
+                created_at INTEGER NOT NULL,
+                parent_id INTEGER DEFAULT NULL
             )
         """)
+
+        # Schema migration: add parent_id if it doesn't exist
+        try:
+            cursor.execute("ALTER TABLE favorite_groups ADD COLUMN parent_id INTEGER DEFAULT NULL")
+        except sqlite3.OperationalError:
+            pass # Column already exists
+
 
         # Favorites table (post_id + group_id = unique pair)
         cursor.execute("""
@@ -105,18 +116,18 @@ class FavoritesManager:
 
     # ──────────── Groups CRUD ────────────
 
-    def create_group(self, name: str, emoji: str = "📁", color: str = "#ff6600") -> FavoriteGroup:
+    def create_group(self, name: str, emoji: str = "📁", color: str = "#ff6600", parent_id: Optional[int] = None) -> FavoriteGroup:
         """Create a new favorite group."""
         conn = self._get_connection()
         now = int(time.time())
         try:
             conn.execute(
-                "INSERT INTO favorite_groups (name, emoji, color, created_at) VALUES (?, ?, ?, ?)",
-                (name.strip(), emoji, color, now)
+                "INSERT INTO favorite_groups (name, emoji, color, created_at, parent_id) VALUES (?, ?, ?, ?, ?)",
+                (name.strip(), emoji, color, now, parent_id)
             )
             conn.commit()
             group_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-            return FavoriteGroup(id=group_id, name=name.strip(), emoji=emoji, color=color, created_at=now)
+            return FavoriteGroup(id=group_id, name=name.strip(), emoji=emoji, color=color, created_at=now, parent_id=parent_id)
         except sqlite3.IntegrityError:
             raise ValueError(f"Group '{name}' already exists")
 
@@ -124,7 +135,7 @@ class FavoritesManager:
         """Get all favorite groups with post counts."""
         conn = self._get_connection()
         rows = conn.execute("""
-            SELECT g.id, g.name, g.emoji, g.color, g.created_at,
+            SELECT g.id, g.name, g.emoji, g.color, g.created_at, g.parent_id,
                    COUNT(f.id) as post_count
             FROM favorite_groups g
             LEFT JOIN favorites f ON f.group_id = g.id
@@ -136,7 +147,7 @@ class FavoritesManager:
             FavoriteGroup(
                 id=r['id'], name=r['name'], emoji=r['emoji'],
                 color=r['color'], created_at=r['created_at'],
-                post_count=r['post_count']
+                post_count=r['post_count'], parent_id=r['parent_id']
             )
             for r in rows
         ]
@@ -145,17 +156,18 @@ class FavoritesManager:
         """Get a single group by ID."""
         conn = self._get_connection()
         row = conn.execute(
-            "SELECT id, name, emoji, color, created_at FROM favorite_groups WHERE id = ?",
+            "SELECT id, name, emoji, color, created_at, parent_id FROM favorite_groups WHERE id = ?",
             (group_id,)
         ).fetchone()
         if row:
             return FavoriteGroup(
                 id=row['id'], name=row['name'], emoji=row['emoji'],
-                color=row['color'], created_at=row['created_at']
+                color=row['color'], created_at=row['created_at'],
+                parent_id=row['parent_id']
             )
         return None
 
-    def update_group(self, group_id: int, name: str = None, emoji: str = None, color: str = None) -> bool:
+    def update_group(self, group_id: int, name: str = None, emoji: str = None, color: str = None, parent_id: Optional[int] = -1) -> bool:
         """Update a group's attributes."""
         conn = self._get_connection()
         updates = []
@@ -169,6 +181,9 @@ class FavoritesManager:
         if color is not None:
             updates.append("color = ?")
             params.append(color)
+        if parent_id != -1:
+            updates.append("parent_id = ?")
+            params.append(parent_id)
 
         if not updates:
             return False

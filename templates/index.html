@@ -15,14 +15,14 @@
                 refreshBtn.disabled = true;
                 const btnText = refreshBtn.querySelector('.btn-text');
                 const originalText = btnText.textContent;
-                btnText.textContent = 'Actualizando...';
+                btnText.textContent = '{{ _('btn_refreshing') }}';
 
                 try {
                     const response = await fetch('/refresh');
                     const data = await response.json();
 
                     if (data.status === 'success') {
-                        btnText.textContent = `¡Listo! (${data.new_posts} nuevos)`;
+                        btnText.textContent = `{{ _('btn_refresh_done') }} (${data.new_posts} nuevos)`;
                         setTimeout(() => {
                             window.location.reload();
                         }, 1500);
@@ -31,7 +31,7 @@
                     }
                 } catch (error) {
                     console.error('Refresh failed:', error);
-                    btnText.textContent = 'Error al actualizar';
+                    btnText.textContent = '{{ _('btn_refresh_error') }}';
                     refreshBtn.classList.remove('loading');
                     refreshBtn.disabled = false;
 
@@ -92,11 +92,11 @@
 
                     if (data.is_favorite) {
                         this.classList.add('is-favorite');
-                        this.setAttribute('title', 'Quitar de favoritos');
+                        this.setAttribute('title', '{{ _('fav_remove') }}');
                         this.querySelector('.fav-icon').textContent = '❤️';
                     } else {
                         this.classList.remove('is-favorite');
-                        this.setAttribute('title', 'Agregar a favoritos');
+                        this.setAttribute('title', '{{ _('fav_add') }}');
                         this.querySelector('.fav-icon').textContent = '🤍';
                     }
 
@@ -203,8 +203,11 @@
                 const nameInput = this.querySelector('#group-name-input');
                 const emojiInput = this.querySelector('#group-emoji-input');
                 const colorInput = this.querySelector('#group-color-input');
+                const parentInput = this.querySelector('#group-parent-input');
                 const name = nameInput.value.trim();
                 if (!name) return;
+
+                const parent_id = parentInput ? parentInput.value : '';
 
                 try {
                     const res = await fetch('/api/groups', {
@@ -213,7 +216,8 @@
                         body: JSON.stringify({
                             name: name,
                             emoji: emojiInput.value || '📁',
-                            color: colorInput.value || '#ff6600'
+                            color: colorInput.value || '#ff6600',
+                            parent_id: parent_id
                         })
                     });
                     const data = await res.json();
@@ -241,8 +245,17 @@
                 const data = await res.json();
                 listEl.innerHTML = '';
 
+                const parentSelect = document.getElementById('group-parent-input');
+                if (parentSelect) {
+                    let opts = '<option value="">{{ _('modal_group_parent') }}</option>';
+                    data.groups.filter(g => !g.parent_id).forEach(g => {
+                        opts += `<option value="${g.id}">${g.emoji} ${g.name}</option>`;
+                    });
+                    parentSelect.innerHTML = opts;
+                }
+
                 if (data.groups.length === 0) {
-                    listEl.innerHTML = '<p class="no-groups-msg">No hay grupos creados aún.</p>';
+                    listEl.innerHTML = '<p class="no-groups-msg">{{ _('modal_group_empty') }}</p>';
                     return;
                 }
 
@@ -284,63 +297,75 @@
 <div class="sidebar">
     {# ──── Favorites Section ──── #}
     <div class="sidebar-section fav-sidebar-section">
-        <h2>⭐ Mis Favoritos</h2>
+        <h2>{{ _('fav_title') }}</h2>
         <div class="category-list">
             <a href="/favorites"
                 class="category-item {% if current_category == 'favorites' and fav_current_group is not defined %}active{% endif %}">
-                <span class="category-name">📋 Todos</span>
+                <span class="category-name">{{ _('fav_all') }}</span>
                 <span class="category-count" id="fav-total-count">{{ fav_total_count|default(0) }}</span>
             </a>
             <a href="/favorites?group=0"
                 class="category-item {% if current_category == 'favorites' and fav_current_group is defined and fav_current_group == 0 %}active{% endif %}">
-                <span class="category-name">⭐ General</span>
+                <span class="category-name">{{ _('fav_general') }}</span>
                 <span class="category-count" id="fav-default-count">{{ fav_default_count|default(0) }}</span>
             </a>
             {% if fav_groups %}
             {% for group in fav_groups %}
+            {% if not group.parent_id %}
             <a href="/favorites?group={{ group.id }}"
                 class="category-item {% if fav_current_group is defined and fav_current_group == group.id %}active{% endif %}">
                 <span class="category-name">{{ group.emoji }} {{ group.name }}</span>
                 <span class="category-count">{{ group.post_count }}</span>
             </a>
+            {% for sub in fav_groups %}
+            {% if sub.parent_id == group.id %}
+            <a href="/favorites?group={{ sub.id }}"
+                class="category-item {% if fav_current_group is defined and fav_current_group == sub.id %}active{% endif %}"
+                style="padding-left: 2rem; font-size: 0.9em;">
+                <span class="category-name">↳ {{ sub.emoji }} {{ sub.name }}</span>
+                <span class="category-count">{{ sub.post_count }}</span>
+            </a>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
             {% endfor %}
             {% endif %}
         </div>
         <button id="open-group-modal" class="manage-groups-btn">
-            ⚙️ Gestionar Grupos
+            {{ _('fav_manage') }}
         </button>
     </div>
 
-    <h2 style="margin-top: 24px;">Categories</h2>
+    <h2 style="margin-top: 24px;">{{ _('cat_title') }}</h2>
     <div class="category-list">
         <a href="/" class="category-item {% if current_category == 'all' %}active{% endif %}">
-            <span class="category-name">All Posts</span>
+            <span class="category-name">{{ _('cat_all') }}</span>
             <span class="category-count">{{ stats.values()|sum if stats else 0 }}</span>
         </a>
         <a href="/?category=story" class="category-item {% if current_category == 'story' %}active{% endif %}">
-            <span class="category-name">📖 Stories</span>
+            <span class="category-name">{{ _('cat_story') }}</span>
             <span class="category-count">{{ stats.get('story', 0) }}</span>
         </a>
         <a href="/?category=job" class="category-item {% if current_category == 'job' %}active{% endif %}">
-            <span class="category-name">💼 Jobs</span>
+            <span class="category-name">{{ _('cat_job') }}</span>
             <span class="category-count">{{ stats.get('job', 0) }}</span>
         </a>
         <a href="/?category=ask" class="category-item {% if current_category == 'ask' %}active{% endif %}">
-            <span class="category-name">❓ Ask HN</span>
+            <span class="category-name">{{ _('cat_ask') }}</span>
             <span class="category-count">{{ stats.get('ask', 0) }}</span>
         </a>
         <a href="/?category=poll" class="category-item {% if current_category == 'poll' %}active{% endif %}">
-            <span class="category-name">📊 Polls</span>
+            <span class="category-name">{{ _('cat_poll') }}</span>
             <span class="category-count">{{ stats.get('poll', 0) }}</span>
         </a>
         <a href="/?category=other" class="category-item {% if current_category == 'other' %}active{% endif %}">
-            <span class="category-name">📝 Other</span>
+            <span class="category-name">{{ _('cat_other') }}</span>
             <span class="category-count">{{ stats.get('other', 0) }}</span>
         </a>
     </div>
 
     {% if tag_stats %}
-    <h2 style="margin-top: 30px;">Popular Tags</h2>
+    <h2 style="margin-top: 30px;">{{ _('tags_title') }}</h2>
     <div class="tag-cloud">
         {% for tag, count in (tag_stats.items()|list)[:15] %}
         <a href="/?tag={{ tag }}" class="tag-item {% if current_tag == tag %}active{% endif %}">
@@ -351,7 +376,7 @@
     {% endif %}
 
     <div class="sidebar-section" style="margin-top: 30px;">
-        <h2>Filters</h2>
+        <h2>{{ _('filters_title') }}</h2>
         <div class="filter-options">
             <a href="{{ url_for('.index', ai_filter='off' if ai_filter == 'on' else 'on', pdf_filter=pdf_filter, category=current_category if current_category != 'search' else None, tag=current_tag) }}"
                 class="filter-toggle"
@@ -377,15 +402,15 @@
     </div>
 
     <div class="sidebar-section" style="margin-top: 30px;">
-        <h2>Export Report</h2>
+        <h2>{{ _('export_title') }}</h2>
         <div class="report-options">
             {% set report_args = {} %}
-            {% if search_query %} {% set _ = report_args.update({'q': search_query}) %} {% endif %}
-            {% if current_tag %} {% set _ = report_args.update({'tag': current_tag}) %} {% endif %}
+            {% if search_query %} {% set dummy = report_args.update({'q': search_query}) %} {% endif %}
+            {% if current_tag %} {% set dummy = report_args.update({'tag': current_tag}) %} {% endif %}
             {% if current_category and current_category != 'search' and current_category != 'all' %}
-            {% set _ = report_args.update({'category': current_category}) %}
+            {% set dummy = report_args.update({'category': current_category}) %}
             {% endif %}
-            {% if ai_filter %} {% set _ = report_args.update({'ai_filter': ai_filter}) %} {% endif %}
+            {% if ai_filter %} {% set dummy = report_args.update({'ai_filter': ai_filter}) %} {% endif %}
 
             <a href="{{ url_for('.generate_report', format='markdown', **report_args) }}"
                 class="report-btn">Markdown</a>
@@ -396,7 +421,7 @@
     </div>
 
     <div class="sidebar-section" style="margin-top: 30px;">
-        <h2>Blogs de Investigación</h2>
+        <h2>{{ _('blogs_title') }}</h2>
         <div class="category-list">
             <a href="https://research.google/blog/" target="_blank" class="category-item">
                 <span class="category-name">Gemini (Google)</span>
@@ -421,45 +446,56 @@
 <div class="main-content">
     {# ── Tab bar ── #}
     <div id="main-tab-bar" class="main-tab-bar">
-        <button class="main-tab-btn active" data-tab="tab-hn" onclick="window.location='/'">🟠 Post HN</button>
-        <button class="main-tab-btn" data-tab="tab-personal" onclick="window.location='/personal'">🖊️ Post Personal</button>
+        <button class="main-tab-btn active" data-tab="tab-hn" onclick="window.location='/'">{{ _('nav_hn') }}</button>
+        <button class="main-tab-btn" data-tab="tab-personal" onclick="window.location='/personal'">{{ _('nav_personal')
+            }}</button>
     </div>
 
     <div class="header-section" style="margin-top:12px">
         <h2>
             {% if current_category == 'favorites' %}
-            {{ fav_current_group_name|default('⭐ Mis Favoritos') }}
+            {{ fav_current_group_name|default(_('fav_title')) }}
             {% elif current_category == 'search' %}
-            Search Results: "{{ search_query }}"
+            {{ _('search_results') }} "{{ search_query }}"
             {% elif current_category == 'all' %}
-            All Posts
+            {{ _('cat_all') }}
             {% elif current_category == 'story' %}
-            Stories
+            {{ _('cat_story') }}
             {% elif current_category == 'job' %}
-            Job Postings
+            {{ _('cat_job') }}
             {% elif current_category == 'ask' %}
-            Ask HN
+            {{ _('cat_ask') }}
             {% elif current_category == 'poll' %}
-            Polls
+            {{ _('cat_poll') }}
             {% else %}
-            Other Posts
+            {{ _('cat_other') }}
             {% endif %}
         </h2>
         <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
+            <div class="lang-toggle">
+                <button onclick="document.cookie='lang=en;path=/'; location.reload();" class="btn"
+                    style="border:none;background:none;cursor:pointer;font-size:1.2em;opacity:{% if current_lang == 'en' %}1{% else %}0.5{% endif %};"
+                    title="English">🇺🇸</button>
+                <button onclick="document.cookie='lang=es;path=/'; location.reload();" class="btn"
+                    style="border:none;background:none;cursor:pointer;font-size:1.2em;opacity:{% if current_lang == 'es' %}1{% else %}0.5{% endif %};"
+                    title="Español">🇪🇸</button>
+            </div>
             <button id="refresh-posts-btn" class="refresh-btn">
                 <span class="btn-icon">🔄</span>
                 <div class="spinner"></div>
-                <span class="btn-text">Actualizar Posts</span>
+                <span class="btn-text">{{ _('btn_refresh') }}</span>
             </button>
             <div class="view-toggle" id="view-toggle">
-                <button id="view-list-btn" class="view-toggle-btn active" aria-label="Vista lista" title="Vista lista">
+                <button id="view-list-btn" class="view-toggle-btn active" aria-label="{{ _('view_list') }}"
+                    title="{{ _('view_list') }}">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                         <rect x="1" y="2" width="16" height="2.5" rx="1" fill="currentColor" />
                         <rect x="1" y="7.75" width="16" height="2.5" rx="1" fill="currentColor" />
                         <rect x="1" y="13.5" width="16" height="2.5" rx="1" fill="currentColor" />
                     </svg>
                 </button>
-                <button id="view-grid-btn" class="view-toggle-btn" aria-label="Vista grilla" title="Vista grilla">
+                <button id="view-grid-btn" class="view-toggle-btn" aria-label="{{ _('view_grid') }}"
+                    title="{{ _('view_grid') }}">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                         <rect x="1" y="1" width="7" height="7" rx="1.5" fill="currentColor" />
                         <rect x="10" y="1" width="7" height="7" rx="1.5" fill="currentColor" />
@@ -490,7 +526,7 @@
                     {# Favorite toggle button #}
                     <button class="fav-toggle-btn {% if post.id in favorite_ids %}is-favorite{% endif %}"
                         data-post-id="{{ post.id }}" data-group-id="0"
-                        title="{% if post.id in favorite_ids %}Quitar de favoritos{% else %}Agregar a favoritos{% endif %}">
+                        title="{% if post.id in favorite_ids %}{{ _('fav_remove') }}{% else %}{{ _('fav_add') }}{% endif %}">
                         <span class="fav-icon">{% if post.id in favorite_ids %}❤️{% else %}🤍{% endif %}</span>
                     </button>
                     {# Add to group dropdown #}
@@ -500,12 +536,22 @@
                             <span>📂</span>
                         </button>
                         <div class="fav-group-dropdown">
-                            <div class="fav-dropdown-header">Agregar a grupo:</div>
+                            <div class="fav-dropdown-header">{{ _('fav_dropdown') }}</div>
                             {% for group in fav_groups %}
+                            {% if not group.parent_id %}
                             <button class="fav-group-option" data-post-id="{{ post.id }}"
                                 data-group-id="{{ group.id }}">
                                 {{ group.emoji }} {{ group.name }}
                             </button>
+                            {% for sub in fav_groups %}
+                            {% if sub.parent_id == group.id %}
+                            <button class="fav-group-option" data-post-id="{{ post.id }}" data-group-id="{{ sub.id }}"
+                                style="padding-left: 1.5rem;">
+                                ↳ {{ sub.emoji }} {{ sub.name }}
+                            </button>
+                            {% endif %}
+                            {% endfor %}
+                            {% endif %}
                             {% endfor %}
                         </div>
                     </div>
@@ -515,8 +561,8 @@
             </div>
 
             <div class="post-meta">
-                <span class="post-score">⬆ {{ post.score }} points</span>
-                <span class="post-author">by {{ post.author }}</span>
+                <span class="post-score">⬆ {{ post.score }} {{ _('post_points') }}</span>
+                <span class="post-author">{{ _('post_by') }} {{ post.author }}</span>
                 <span class="post-date">{{ post.created_at|timestamp_to_date }}</span>
             </div>
 
@@ -539,11 +585,11 @@
     {% else %}
     <div class="empty-state">
         {% if current_category == 'favorites' %}
-        <h3>No hay favoritos aún</h3>
-        <p>Haz clic en el ❤️ de cualquier post para agregarlo a tus favoritos.</p>
+        <h3>{{ _('empty_fav_title') }}</h3>
+        <p>{{ _('empty_fav_desc') }}</p>
         {% else %}
-        <h3>No posts found</h3>
-        <p>Try fetching posts using the CLI:</p>
+        <h3>{{ _('empty_posts_title') }}</h3>
+        <p>{{ _('empty_posts_desc') }}</p>
         <code>python -m src fetch --limit 30</code>
         {% endif %}
     </div>
@@ -555,10 +601,10 @@
         {% if page > 1 %}
         <a href="?{% for key, val in request.args.items(multi=True) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page={{ page - 1 }}"
             class="page-btn page-prev" aria-label="Página anterior">
-            ← Anterior
+            {{ _('page_prev') }}
         </a>
         {% else %}
-        <span class="page-btn page-prev disabled">← Anterior</span>
+        <span class="page-btn page-prev disabled">{{ _('page_prev') }}</span>
         {% endif %}
 
         {# Page numbers #}
@@ -594,10 +640,10 @@
         {% if page < total_pages %} <a
             href="?{% for key, val in request.args.items(multi=true) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page={{ page + 1 }}"
             class="page-btn page-next" aria-label="Página siguiente">
-            Siguiente →
+            {{ _('page_next') }}
             </a>
             {% else %}
-            <span class="page-btn page-next disabled">Siguiente →</span>
+            <span class="page-btn page-next disabled">{{ _('page_next') }}</span>
             {% endif %}
     </nav>
     {% endif %}
@@ -607,7 +653,7 @@
 <div id="group-modal-overlay" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>⚙️ Gestionar Grupos de Favoritos</h3>
+            <h3>{{ _('fav_manage') }} de Favoritos</h3>
             <button id="close-group-modal" class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
@@ -615,15 +661,18 @@
                 <div class="form-row">
                     <input type="text" id="group-emoji-input" class="form-input emoji-input" value="📁" maxlength="4"
                         title="Emoji del grupo">
-                    <input type="text" id="group-name-input" class="form-input" placeholder="Nombre del grupo..."
-                        required maxlength="50">
+                    <input type="text" id="group-name-input" class="form-input"
+                        placeholder="{{ _('modal_group_name') }}" required maxlength="50">
+                    <select id="group-parent-input" class="form-input" title="Grupo Padre">
+                        <option value="">{{ _('modal_group_parent') }}</option>
+                    </select>
                     <input type="color" id="group-color-input" class="form-input color-input" value="#ff6600"
                         title="Color del grupo">
-                    <button type="submit" class="create-group-btn">+ Crear</button>
+                    <button type="submit" class="create-group-btn">{{ _('modal_group_create') }}</button>
                 </div>
             </form>
             <div id="modal-groups-list" class="modal-groups-list">
-                <p class="no-groups-msg">Cargando...</p>
+                <p class="no-groups-msg">{{ _('modal_group_loading') }}</p>
             </div>
         </div>
     </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Mis Posts Personales – Hacker News Report{% endblock %}
+{% block title %}{{ _('personal_title') }} – Hacker News Report{% endblock %}
 
 {% block scripts %}
 <script>
@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     {# ── Header row ── #}
     <div class="header-section" style="margin-top:12px">
-        <h2>🖊️ Mis Posts Personales</h2>
+        <h2>🖊️ {{ _('personal_title') }}</h2>
         <div class="header-actions" style="display:flex;align-items:center;gap:14px">
             <button id="btn-new-personal-post" class="refresh-btn" style="background:#2563eb">
                 <span class="btn-icon">➕</span>
