@@ -262,7 +262,7 @@ class FavoritesManager:
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT DISTINCT post_id FROM favorites ORDER BY MAX(added_at) DESC"
+                "SELECT post_id FROM favorites GROUP BY post_id ORDER BY MAX(added_at) DESC"
             ).fetchall()
         return [r['post_id'] for r in rows]
 
