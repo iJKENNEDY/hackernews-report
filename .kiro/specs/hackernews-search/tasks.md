@@ -202,7 +202,7 @@ Este plan implementa un sistema de búsqueda completo para posts de Hacker News 
   - Test de argumento --list-tags
   - _Requisitos: 11.1, 11.2_
 
-- [ ] 15. Implementar visualización de resultados de búsqueda
+- [x] 15. Implementar visualización de resultados de búsqueda
   - Implementar método `display_search_results()` en CLI
   - Reutilizar formato de tabla del comando "list"
   - Aplicar resaltado de términos en títulos
@@ -210,7 +210,7 @@ Este plan implementa un sistema de búsqueda completo para posts de Hacker News 
   - Mostrar mensaje cuando no hay resultados
   - _Requisitos: 11.3, 8.3, 6.4_
 
-- [ ]* 15.1 Escribir unit tests para visualización
+- [x]* 15.1 Escribir unit tests para visualización
   - Test de formato consistente con comando "list"
   - Test de mensaje sin resultados
   - _Requisitos: 11.3, 6.4_
