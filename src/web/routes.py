@@ -2,7 +2,7 @@ import math
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, Response, current_app
 
-from src.models import Category, SearchQuery
+from src.models import Category, SearchQuery, Post
 from src.tags import TagSystem
 from src.report_service import ReportFormat
 from src.favorites import FavoritesManager
@@ -15,6 +15,49 @@ from .services import get_search_service, get_report_service, get_tag_statistics
 bp = Blueprint('web', __name__)
 
 POSTS_PER_PAGE = 20
+PER_PAGE_OPTIONS = (20, 50, 100)
+
+
+def _normalize_per_page(raw_value: int) -> int:
+    """Normalize pagination size to supported efficient options."""
+    try:
+        val = int(raw_value)
+    except (TypeError, ValueError):
+        return POSTS_PER_PAGE
+    if val in PER_PAGE_OPTIONS:
+        return val
+    return POSTS_PER_PAGE
+
+
+def _personal_to_search_post(personal_post, fallback_search_text: str = ""):
+    """Convert PersonalPost to Post-like object for unified search UI rendering."""
+    lower_blob = " ".join([
+        personal_post.title or "",
+        personal_post.description or "",
+        personal_post.url or "",
+        " ".join(personal_post.tags or []),
+    ]).lower()
+    guessed_category = Category.OTHER
+    if any(k in lower_blob for k in ("ask", "question", "pregunta")):
+        guessed_category = Category.ASK
+    elif any(k in lower_blob for k in ("job", "hiring", "vacante")):
+        guessed_category = Category.JOB
+
+    # Offset id to avoid collisions with HN ids in mixed search results.
+    synthetic_id = 1_000_000_000 + int(personal_post.id)
+
+    return Post(
+        id=synthetic_id,
+        title=personal_post.title,
+        author="personal",
+        score=0,
+        url=personal_post.url or "/personal",
+        created_at=personal_post.date_added,
+        type="personal",
+        category=guessed_category,
+        fetched_at=personal_post.updated_at,
+        tags=personal_post.tags or [],
+    )
 
 
 def _get_favorites_manager():
@@ -45,6 +88,7 @@ def index():
     pdf_filter = request.args.get('pdf_filter', 'off')  # Default off
     selected_models = request.args.getlist('models')
     page = request.args.get('page', 1, type=int)
+    per_page = _normalize_per_page(request.args.get('per_page', POSTS_PER_PAGE, type=int))
     
     db = get_db()
     
@@ -98,10 +142,10 @@ def index():
     
     # Pagination
     total_posts = len(posts)
-    total_pages = max(1, math.ceil(total_posts / POSTS_PER_PAGE))
+    total_pages = max(1, math.ceil(total_posts / per_page))
     page = max(1, min(page, total_pages))
-    start = (page - 1) * POSTS_PER_PAGE
-    end = start + POSTS_PER_PAGE
+    start = (page - 1) * per_page
+    end = start + per_page
     paginated_posts = posts[start:end]
     
     # Get category statistics
@@ -138,6 +182,8 @@ def index():
         page=page,
         total_pages=total_pages,
         total_posts=total_posts,
+        per_page=per_page,
+        per_page_options=PER_PAGE_OPTIONS,
         favorite_ids=favorite_ids,
         fav_groups=fav_groups,
         fav_default_count=fav_default_count,
@@ -150,6 +196,7 @@ def favorites_page():
     """Page showing favorite posts, optionally filtered by group."""
     group_id = request.args.get('group', None, type=int)
     page = request.args.get('page', 1, type=int)
+    per_page = _normalize_per_page(request.args.get('per_page', POSTS_PER_PAGE, type=int))
 
     db = get_db()
     fav_mgr = _get_favorites_manager()
@@ -169,10 +216,10 @@ def favorites_page():
 
     # Pagination
     total_posts = len(posts)
-    total_pages = max(1, math.ceil(total_posts / POSTS_PER_PAGE))
+    total_pages = max(1, math.ceil(total_posts / per_page))
     page = max(1, min(page, total_pages))
-    start = (page - 1) * POSTS_PER_PAGE
-    end = start + POSTS_PER_PAGE
+    start = (page - 1) * per_page
+    end = start + per_page
     paginated_posts = posts[start:end]
 
     # Sidebar data
@@ -210,6 +257,8 @@ def favorites_page():
         page=page,
         total_pages=total_pages,
         total_posts=total_posts,
+        per_page=per_page,
+        per_page_options=PER_PAGE_OPTIONS,
         favorite_ids=favorite_ids,
         fav_groups=fav_groups,
         fav_default_count=fav_default_count,
@@ -246,12 +295,14 @@ def search():
     pdf_filter = request.args.get('pdf_filter', 'off')
     selected_models = request.args.getlist('models')
     page = request.args.get('page', 1, type=int)
+    per_page = _normalize_per_page(request.args.get('per_page', POSTS_PER_PAGE, type=int))
     
     if not query_text and not tag_filter and not author_filter:
         return index()
 
     db = get_db()
     search_service = get_search_service(db)
+    personal_mgr = _get_personal_manager()
     
     # Build search query
     tags = [tag_filter] if tag_filter else None
@@ -261,12 +312,34 @@ def search():
             text=query_text,
             author=author_filter,
             tags=tags,
-            page_size=500  # Fetch many for pagination
+            page_size=100  # Must respect SearchQuery validation (<= 100)
         )
         
-        # Execute search
+        # Execute search (HN posts)
         result = search_service.search_posts(search_query)
         posts = result.posts
+
+        # Include personal posts in global search results
+        personal_posts = personal_mgr.get_posts(tag=tag_filter or None)
+        q_text = (query_text or '').strip().lower()
+        a_text = (author_filter or '').strip().lower()
+
+        def matches_personal(pp):
+            if a_text and a_text not in (pp.source or '').lower():
+                return False
+            if q_text:
+                haystack = " ".join([
+                    pp.title or '',
+                    pp.description or '',
+                    pp.url or '',
+                    ' '.join(pp.tags or []),
+                    pp.source or '',
+                ]).lower()
+                return q_text in haystack
+            return True
+
+        matched_personal = [pp for pp in personal_posts if matches_personal(pp)]
+        posts.extend([_personal_to_search_post(pp, query_text) for pp in matched_personal])
         # Filter by selected AI models (if any)
         if selected_models:
             model_kw_map = TagSystem.get_model_keyword_map()
@@ -309,16 +382,19 @@ def search():
                 highlighted_posts_2.append(replace(post, title=new_title))
             posts = highlighted_posts_2
 
+        # Keep newest first in mixed results
+        posts.sort(key=lambda p: p.created_at, reverse=True)
+
     except ValueError as e:
         posts = []
         # TODO: flash error
     
     # Pagination
     total_posts = len(posts)
-    total_pages = max(1, math.ceil(total_posts / POSTS_PER_PAGE))
+    total_pages = max(1, math.ceil(total_posts / per_page))
     page = max(1, min(page, total_pages))
-    start = (page - 1) * POSTS_PER_PAGE
-    end = start + POSTS_PER_PAGE
+    start = (page - 1) * per_page
+    end = start + per_page
     paginated_posts = posts[start:end]
     
     # Get stats for sidebar
@@ -350,6 +426,8 @@ def search():
         page=page,
         total_pages=total_pages,
         total_posts=total_posts,
+        per_page=per_page,
+        per_page_options=PER_PAGE_OPTIONS,
         favorite_ids=favorite_ids,
         fav_groups=fav_groups,
         fav_default_count=fav_default_count,
@@ -384,7 +462,7 @@ def generate_report():
                 text=query_text,
                 author=author_filter,
                 tags=tags,
-                page_size=1000  # Fetch many for report
+                page_size=100  # Must respect SearchQuery validation (<= 100)
             )
             result = search_service.search_posts(search_query)
             posts = result.posts
