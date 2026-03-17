@@ -58,17 +58,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function sourceBadgeHtml(source) {
-        const map = { personal: { label: '🖊️ Personal', cls: 'src-personal' },
-                      hn:       { label: '🟠 HN',       cls: 'src-hn' },
-                      example:  { label: '📌 Ejemplo',  cls: 'src-example' } };
+        const map = {
+            personal: { label: '🖊️ Personal', cls: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200' },
+            hn: { label: '🟠 HN', cls: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/80 dark:bg-orange-950/40 dark:text-orange-300' },
+            example: { label: '📌 Ejemplo', cls: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200' }
+        };
         const s = map[source] || map.personal;
-        return `<span class="source-badge ${s.cls}">${s.label}</span>`;
+        return `<span class="source-badge inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${s.cls}">${s.label}</span>`;
     }
 
     function tagsHtml(tags) {
         if (!tags || !tags.length) return '';
-        return `<div class="post-tags">${tags.map(t =>
-            `<span class="post-tag personal-tag">${t}</span>`).join('')}</div>`;
+        return `<div class="post-tags mt-3 flex flex-wrap gap-1.5">${tags.map(t =>
+            `<span class="post-tag personal-tag rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">${t}</span>`).join('')}</div>`;
     }
 
     function categoryBreadcrumb(post) {
@@ -77,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (post.parent_category_name) {
             crumb = `<span style="opacity:.7">${post.parent_category_name} /</span> ` + crumb;
         }
-        return `<span class="pp-cat-badge">${crumb}</span>`;
+        return `<span class="pp-cat-badge inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs dark:border-slate-700 dark:bg-slate-900">${crumb}</span>`;
     }
 
     // ── Render posts list ─────────────────────────────────────────────────────
@@ -85,34 +87,34 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!postsList) return;
         if (!posts.length) {
             postsList.innerHTML = `
-                <div class="empty-state">
-                    <h3>Sin posts personales</h3>
-                    <p>Haz clic en <strong>+ Agregar Post</strong> para crear tu primer post.</p>
+                <div class="empty-state rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">Sin posts personales</h3>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Haz clic en <strong>+ Agregar Post</strong> para crear tu primer post.</p>
                 </div>`;
             return;
         }
         postsList.innerHTML = posts.map(p => `
-            <article class="post-card personal-post-card" data-id="${p.id}">
-                <div class="post-header">
-                    <h3 class="post-title">
+            <article class="post-card personal-post-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900" data-id="${p.id}">
+                <div class="post-header flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <h3 class="post-title text-lg font-semibold text-slate-900 dark:text-slate-100">
                         ${p.url
-                            ? `<a href="${escHtml(p.url)}" target="_blank" rel="noopener">${escHtml(p.title)}</a><span class="external-link">↗</span>`
+                            ? `<a href="${escHtml(p.url)}" target="_blank" rel="noopener" class="hover:text-brand-600 dark:hover:text-brand-500">${escHtml(p.title)}</a><span class="external-link ml-1 text-slate-400">↗</span>`
                             : `<span>${escHtml(p.title)}</span>`}
                     </h3>
-                    <div class="post-actions-row">
+                    <div class="post-actions-row flex flex-wrap items-center gap-2">
                         ${sourceBadgeHtml(p.source)}
                         ${categoryBreadcrumb(p)}
                     </div>
                 </div>
-                <div class="post-meta">
+                <div class="post-meta mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                     <span class="post-date">📅 ${formatDate(p.date_added)}</span>
-                    ${p.url ? `<span class="post-url-inline">🔗 <a href="${escHtml(p.url)}" target="_blank">${escHtml(p.url.slice(0,60))}${p.url.length>60?'…':''}</a></span>` : ''}
+                    ${p.url ? `<span class="post-url-inline">🔗 <a href="${escHtml(p.url)}" target="_blank" class="hover:text-brand-600 dark:hover:text-brand-500">${escHtml(p.url.slice(0,60))}${p.url.length>60?'…':''}</a></span>` : ''}
                 </div>
                 ${tagsHtml(p.tags)}
-                ${p.description ? `<p class="pp-description">${escHtml(p.description)}</p>` : ''}
-                <div class="pp-card-actions">
-                    <button class="pp-edit-btn" data-id="${p.id}" title="Editar">✏️ Editar</button>
-                    <button class="pp-delete-btn" data-id="${p.id}" title="Eliminar">🗑️ Eliminar</button>
+                ${p.description ? `<p class="pp-description mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">${escHtml(p.description)}</p>` : ''}
+                <div class="pp-card-actions mt-4 flex gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+                    <button class="pp-edit-btn rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" data-id="${p.id}" title="Editar">✏️ Editar</button>
+                    <button class="pp-delete-btn rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300" data-id="${p.id}" title="Eliminar">🗑️ Eliminar</button>
                 </div>
             </article>`).join('');
 
@@ -345,24 +347,98 @@ document.addEventListener('DOMContentLoaded', function () {
             if (tag) params += `${params?'&':''}tag=${encodeURIComponent(tag)}`;
             loadPosts(params);
             // Update active state
-            document.querySelectorAll('.pp-cat-filter-link').forEach(l => l.parentElement.classList.remove('active'));
-            this.parentElement.classList.add('active');
+            document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
+            const currentItem = this.closest('.category-item');
+            if (currentItem) currentItem.classList.add('active');
+        });
+    });
+
+    // ── Personal category groups collapse/expand ─────────────────────────────
+    const GROUP_STATE_KEY = 'hnr-personal-categories-state';
+    const rawGroupState = localStorage.getItem(GROUP_STATE_KEY);
+    const groupState = rawGroupState ? JSON.parse(rawGroupState) : {};
+
+    function setGroupState(btn, target, collapsed, instant = false) {
+        const DURATION_MS = 280;
+
+        if (collapsed) {
+            const currentHeight = target.scrollHeight;
+            target.style.maxHeight = instant ? '0px' : `${currentHeight}px`;
+            target.style.opacity = instant ? '0' : '1';
+            target.style.transform = instant ? 'translateY(-4px)' : 'translateY(0)';
+            if (!instant) {
+                requestAnimationFrame(() => {
+                    target.style.maxHeight = '0px';
+                    target.style.opacity = '0';
+                    target.style.transform = 'translateY(-4px)';
+                });
+            }
+            target.classList.add('is-collapsed');
+        } else {
+            target.classList.remove('is-collapsed');
+            if (instant) {
+                target.style.maxHeight = 'none';
+                target.style.opacity = '1';
+                target.style.transform = 'translateY(0)';
+            } else {
+                target.style.maxHeight = '0px';
+                target.style.opacity = '0';
+                target.style.transform = 'translateY(-4px)';
+                requestAnimationFrame(() => {
+                    target.style.maxHeight = `${target.scrollHeight}px`;
+                    target.style.opacity = '1';
+                    target.style.transform = 'translateY(0)';
+                });
+                setTimeout(() => {
+                    if (!target.classList.contains('is-collapsed')) {
+                        target.style.maxHeight = 'none';
+                    }
+                }, DURATION_MS + 40);
+            }
+        }
+
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        groupState[target.id] = collapsed;
+        localStorage.setItem(GROUP_STATE_KEY, JSON.stringify(groupState));
+    }
+
+    document.querySelectorAll('.group-toggle-btn').forEach(btn => {
+        const targetId = btn.dataset.groupToggle;
+        const target = targetId ? document.getElementById(targetId) : null;
+        if (!target) return;
+
+        const savedCollapsed = Object.prototype.hasOwnProperty.call(groupState, targetId)
+            ? groupState[targetId]
+            : target.classList.contains('is-collapsed');
+        setGroupState(btn, target, savedCollapsed, true);
+
+        btn.addEventListener('click', function () {
+            const isCollapsed = target.classList.contains('is-collapsed');
+            setGroupState(btn, target, !isCollapsed);
         });
     });
 
     // ── Init ──────────────────────────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialCat = urlParams.get('category_id');
+    const initialTag = urlParams.get('tag');
+    let initialParams = '';
+    if (initialCat) initialParams += `category_id=${encodeURIComponent(initialCat)}`;
+    if (initialTag) initialParams += `${initialParams ? '&' : ''}tag=${encodeURIComponent(initialTag)}`;
+
     loadCategoriesCache().then(() => populateCategorySelect());
-    loadPosts();
+    loadPosts(initialParams);
 });
 </script>
 {% endblock %}
 
 {% block content %}
-<div class="sidebar">
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+<aside class="sidebar space-y-6 lg:sticky lg:top-24">
     {# ──── Personal Categories Sidebar ──── #}
     <div class="sidebar-section">
-        <h2>📋 Mis Posts</h2>
-        <div class="category-list">
+        <h2 class="mb-3 text-lg font-bold text-slate-800 dark:text-slate-100">📋 Mis Posts</h2>
+        <div class="category-list overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div class="category-item {% if not current_category_id and not current_tag %}active{% endif %}">
                 <a href="/personal" class="pp-cat-filter-link" data-cat-id="" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
                     <span class="category-name">📋 Todos</span>
@@ -370,39 +446,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 </a>
             </div>
             {% for cat in categories_tree %}
-            <div class="category-item {% if current_category_id == cat.id %}active{% endif %}">
-                <a href="/personal?category_id={{ cat.id }}" class="pp-cat-filter-link" data-cat-id="{{ cat.id }}" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
+            {% if cat.children %}
+            <div class="group-row">
+                <a href="/personal?category_id={{ cat.id }}" class="category-item pp-cat-filter-link {% if current_category_id == cat.id %}active{% endif %}" data-cat-id="{{ cat.id }}" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
                     <span class="category-name">{{ cat.emoji }} {{ cat.name }}</span>
                 </a>
+                <button type="button" class="group-toggle-btn" data-group-toggle="cat-sub-{{ cat.id }}" aria-expanded="true" aria-label="Mostrar/Ocultar subgrupos">▶</button>
             </div>
-            {% if cat.children %}
-            {% for sub in cat.children %}
-            <div class="category-item pp-subcategory {% if current_category_id == sub.id %}active{% endif %}">
-                <a href="/personal?category_id={{ sub.id }}" class="pp-cat-filter-link" data-cat-id="{{ sub.id }}" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
-                    <span class="category-name" style="padding-left:12px">↳ {{ sub.emoji }} {{ sub.name }}</span>
-                </a>
+            <div id="cat-sub-{{ cat.id }}" class="subgroup-list {% if current_category_id == cat.id or current_category_id in (cat.children | map(attribute='id') | list) %}{% else %}is-collapsed{% endif %}">
+                {% for sub in cat.children %}
+                <div class="subgroup-item">
+                    <a href="/personal?category_id={{ sub.id }}" class="category-item pp-cat-filter-link {% if current_category_id == sub.id %}active{% endif %}" data-cat-id="{{ sub.id }}" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
+                        <span class="category-name">↳ {{ sub.emoji }} {{ sub.name }}</span>
+                    </a>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            {% else %}
+            <a href="/personal?category_id={{ cat.id }}" class="category-item pp-cat-filter-link {% if current_category_id == cat.id %}active{% endif %}" data-cat-id="{{ cat.id }}" style="text-decoration:none;color:inherit;display:flex;justify-content:space-between;width:100%">
+                <span class="category-name">{{ cat.emoji }} {{ cat.name }}</span>
+            </a>
             {% endif %}
             {% endfor %}
         </div>
-        <button id="btn-manage-categories" class="manage-groups-btn" style="margin-top:10px">
+        <button id="btn-manage-categories" class="manage-groups-btn mt-3 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700 dark:bg-brand-600 dark:hover:bg-brand-500">
             ⚙️ Gestionar Categorías
         </button>
     </div>
 
     {% if all_tags %}
-    <h2 style="margin-top:24px">Tags</h2>
-    <div class="tag-cloud">
+    <h2 class="pt-2 text-lg font-bold text-slate-800 dark:text-slate-100">Tags</h2>
+    <div class="tag-cloud rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {% for tag in all_tags %}
-        <a href="/personal?tag={{ tag }}" class="tag-item {% if current_tag == tag %}active{% endif %}">{{ tag }}</a>
+        <a href="/personal?tag={{ tag }}" class="tag-item pp-cat-filter-link {% if current_tag == tag %}active{% endif %}" data-tag="{{ tag }}">{{ tag }}</a>
         {% endfor %}
     </div>
     {% endif %}
 
     {# ──── HN Categories (for reference) ──── #}
-    <h2 style="margin-top:24px">HN Categories</h2>
-    <div class="category-list">
+    <h2 class="pt-2 text-lg font-bold text-slate-800 dark:text-slate-100">HN Categories</h2>
+    <div class="category-list overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <a href="/" class="category-item">
             <span class="category-name">📖 Stories</span>
             <span class="category-count">{{ stats.get('story', 0) }}</span>
@@ -416,21 +499,21 @@ document.addEventListener('DOMContentLoaded', function () {
             <span class="category-count">{{ stats.get('ask', 0) }}</span>
         </a>
     </div>
-</div>
+</aside>
 
 {# ──── Main Content ──── #}
-<div class="main-content">
+<section class="main-content min-w-0">
     {# ── Tab bar ── #}
-    <div id="main-tab-bar" class="main-tab-bar">
-        <button class="main-tab-btn" data-tab="tab-hn">🟠 Post HN</button>
-        <button class="main-tab-btn active" data-tab="tab-personal">🖊️ Post Personal</button>
+    <div id="main-tab-bar" class="main-tab-bar inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <button class="main-tab-btn rounded-lg px-4 py-2 text-sm font-semibold" data-tab="tab-hn">🟠 Post HN</button>
+        <button class="main-tab-btn active rounded-lg px-4 py-2 text-sm font-semibold" data-tab="tab-personal">🖊️ Post Personal</button>
     </div>
 
     {# ── Header row ── #}
-    <div class="header-section" style="margin-top:12px">
-        <h2>🖊️ {{ _('personal_title') }}</h2>
-        <div class="header-actions" style="display:flex;align-items:center;gap:14px">
-            <button id="btn-new-personal-post" class="refresh-btn" style="background:#2563eb">
+    <div class="header-section mt-4 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">🖊️ {{ _('personal_title') }}</h2>
+        <div class="header-actions flex items-center gap-3">
+            <button id="btn-new-personal-post" class="refresh-btn inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
                 <span class="btn-icon">➕</span>
                 <span class="btn-text">Agregar Post</span>
             </button>
@@ -438,87 +521,88 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 
     {# ── Inline create / edit form panel ── #}
-    <div id="personal-form-panel" class="personal-form-panel">
-        <div class="personal-form-header">
-            <h3 id="form-panel-title">➕ Agregar Post Personal</h3>
-            <button id="btn-cancel-personal-form" class="modal-close" title="Cerrar">✕</button>
+    <div id="personal-form-panel" class="personal-form-panel mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div class="personal-form-header mb-3 flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-700">
+            <h3 id="form-panel-title" class="text-lg font-bold text-slate-800 dark:text-slate-100">➕ Agregar Post Personal</h3>
+            <button id="btn-cancel-personal-form" class="modal-close rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" title="Cerrar">✕</button>
         </div>
         <form id="personal-post-form" class="personal-form">
-            <div class="pf-grid">
+            <div class="pf-grid grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div class="pf-field pf-field-wide">
-                    <label for="fp-title">Título <span class="req">*</span></label>
-                    <input id="fp-title" type="text" placeholder="Título del post..." required maxlength="300">
+                    <label for="fp-title" class="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Título <span class="req">*</span></label>
+                    <input id="fp-title" type="text" placeholder="Título del post..." required maxlength="300" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                 </div>
                 <div class="pf-field pf-field-wide">
-                    <label for="fp-url">Link / URL</label>
-                    <input id="fp-url" type="url" placeholder="https://...">
+                    <label for="fp-url" class="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Link / URL</label>
+                    <input id="fp-url" type="url" placeholder="https://..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                 </div>
                 <div class="pf-field">
-                    <label for="fp-category">Categoría</label>
-                    <select id="fp-category">
+                    <label for="fp-category" class="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Categoría</label>
+                    <select id="fp-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                         <option value="">-- Sin categoría --</option>
                     </select>
                 </div>
                 <div class="pf-field">
-                    <label for="fp-source">Fuente</label>
-                    <select id="fp-source">
+                    <label for="fp-source" class="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Fuente</label>
+                    <select id="fp-source" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                         <option value="personal">🖊️ Personal</option>
                         <option value="hn">🟠 Hacker News</option>
                         <option value="example">📌 Ejemplo</option>
                     </select>
                 </div>
                 <div class="pf-field">
-                    <label for="fp-date">Fecha (auto)</label>
-                    <input id="fp-date" type="text" readonly class="pf-readonly">
+                    <label for="fp-date" class="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Fecha (auto)</label>
+                    <input id="fp-date" type="text" readonly class="pf-readonly w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                 </div>
                 <div class="pf-field">
-                    <label for="fp-tags">Tags de filtro <span class="pf-hint">(separados por coma)</span></label>
-                    <input id="fp-tags" type="text" placeholder="python, ai, tutorial...">
+                    <label for="fp-tags" class="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Tags de filtro <span class="pf-hint">(separados por coma)</span></label>
+                    <input id="fp-tags" type="text" placeholder="python, ai, tutorial..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                 </div>
                 <div class="pf-field pf-field-full">
-                    <label for="fp-description">Descripción / Comentario <span class="pf-hint">(opcional)</span></label>
-                    <textarea id="fp-description" rows="3" placeholder="Notas o comentarios sobre este post..."></textarea>
+                    <label for="fp-description" class="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Descripción / Comentario <span class="pf-hint">(opcional)</span></label>
+                    <textarea id="fp-description" rows="3" placeholder="Notas o comentarios sobre este post..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"></textarea>
                 </div>
             </div>
-            <div class="pf-actions">
-                <button type="submit" class="pf-save-btn">💾 Guardar</button>
-                <button type="button" id="btn-cancel-personal-form" class="pf-cancel-btn">Cancelar</button>
+            <div class="pf-actions mt-4 flex flex-wrap gap-2">
+                <button type="submit" class="pf-save-btn rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">💾 Guardar</button>
+                <button type="button" id="btn-cancel-personal-form" class="pf-cancel-btn rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Cancelar</button>
             </div>
         </form>
     </div>
 
     {# ── Posts list ── #}
-    <div id="personal-posts-list" class="posts-list list-view" style="margin-top:16px">
-        <div class="empty-state">
+    <div id="personal-posts-list" class="posts-list list-view mt-4 space-y-4">
+        <div class="empty-state rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <p>Cargando...</p>
         </div>
     </div>
+</section>
 </div>
 
 {# ──── Category Management Modal ──── #}
 <div id="cat-modal-overlay" class="modal-overlay">
-    <div class="modal-content" style="max-width:540px">
-        <div class="modal-header">
-            <h3>⚙️ Gestionar Categorías Personales</h3>
-            <button id="btn-close-cat-modal" class="modal-close">&times;</button>
+    <div class="modal-content max-h-[85vh] w-[95vw] max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-700 dark:bg-slate-900">
+        <div class="modal-header flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">⚙️ Gestionar Categorías Personales</h3>
+            <button id="btn-close-cat-modal" class="modal-close rounded-md px-2 py-1 text-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">&times;</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body space-y-4 p-4">
             <form id="cat-create-form" class="create-group-form">
                 <p style="font-size:13px;margin-bottom:10px;opacity:.7">Crear nueva categoría o subcategoría:</p>
-                <div class="form-row">
-                    <input type="text" id="cat-emoji-input" class="form-input emoji-input" value="📁" maxlength="4" title="Emoji">
-                    <input type="text" id="cat-name-input" class="form-input" placeholder="Nombre..." required maxlength="60" style="flex:1">
-                    <input type="color" id="cat-color-input" class="form-input color-input" value="#ff6600" title="Color">
+                <div class="form-row grid grid-cols-12 gap-2">
+                    <input type="text" id="cat-emoji-input" class="form-input emoji-input col-span-2 rounded-lg border border-slate-300 px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" value="📁" maxlength="4" title="Emoji">
+                    <input type="text" id="cat-name-input" class="form-input col-span-8 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" placeholder="Nombre..." required maxlength="60" style="flex:1">
+                    <input type="color" id="cat-color-input" class="form-input color-input col-span-2 h-10 w-full rounded-lg border border-slate-300 p-1 dark:border-slate-700 dark:bg-slate-800" value="#ff6600" title="Color">
                 </div>
                 <div class="form-row" style="margin-top:8px">
                     <label style="font-size:13px;white-space:nowrap;align-self:center">Subcategoría de:</label>
-                    <select id="cat-parent-select" class="form-input" style="flex:1">
+                    <select id="cat-parent-select" class="form-input rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" style="flex:1">
                         <option value="">-- Raíz (sin padre) --</option>
                     </select>
-                    <button type="submit" class="create-group-btn">+ Crear</button>
+                    <button type="submit" class="create-group-btn rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700">+ Crear</button>
                 </div>
             </form>
-            <div id="cat-modal-list" class="modal-groups-list" style="margin-top:16px">
+            <div id="cat-modal-list" class="modal-groups-list max-h-[45vh] overflow-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700" style="margin-top:16px">
                 <p class="no-groups-msg">Cargando...</p>
             </div>
         </div>

@@ -3,56 +3,56 @@
 {% block title %}{{ post.title }} - Hacker News Report{% endblock %}
 
 {% block content %}
-<div class="post-detail">
-    <a href="/" class="back-link">← Back to all posts</a>
+<div class="mx-auto max-w-4xl">
+    <a href="/" class="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-500">← Back to all posts</a>
     
-    <article class="post-detail-card">
-        <header class="post-detail-header">
-            <h1 class="post-detail-title">{{ post.title }}</h1>
-            <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
+    <article class="post-detail-card mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+        <header class="post-detail-header mb-8 flex flex-col gap-3 border-b border-slate-200 pb-6 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+            <h1 class="post-detail-title text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">{{ post.title }}</h1>
+            <span class="post-category category-{{ post.category.value }} rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide">{{ post.category.value }}</span>
         </header>
         
-        <div class="post-detail-meta">
-            <div class="meta-item">
-                <span class="meta-label">Score:</span>
-                <span class="meta-value">⬆ {{ post.score }} points</span>
+        <div class="post-detail-meta grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="meta-item rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <span class="meta-label text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Score</span>
+                <span class="meta-value mt-1 block text-sm font-semibold text-slate-800 dark:text-slate-100">⬆ {{ post.score }} points</span>
             </div>
-            <div class="meta-item">
-                <span class="meta-label">Author:</span>
-                <span class="meta-value">{{ post.author }}</span>
+            <div class="meta-item rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <span class="meta-label text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Author</span>
+                <span class="meta-value mt-1 block text-sm font-semibold text-slate-800 dark:text-slate-100">{{ post.author }}</span>
             </div>
-            <div class="meta-item">
-                <span class="meta-label">Posted:</span>
-                <span class="meta-value">{{ post.created_at|timestamp_to_date }}</span>
+            <div class="meta-item rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <span class="meta-label text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Posted</span>
+                <span class="meta-value mt-1 block text-sm font-semibold text-slate-800 dark:text-slate-100">{{ post.created_at|timestamp_to_date }}</span>
             </div>
-            <div class="meta-item">
-                <span class="meta-label">Type:</span>
-                <span class="meta-value">{{ post.type }}</span>
+            <div class="meta-item rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <span class="meta-label text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Type</span>
+                <span class="meta-value mt-1 block text-sm font-semibold text-slate-800 dark:text-slate-100">{{ post.type }}</span>
             </div>
         </div>
         
         {% if post.tags %}
-        <div class="post-detail-tags">
-            <span class="meta-label">Topics:</span>
+        <div class="post-detail-tags mt-7 border-b border-slate-200 pb-6 dark:border-slate-800">
+            <span class="meta-label text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Topics</span>
             <div class="post-tags">
                 {% for tag in post.tags %}
-                <a href="/?tag={{ tag }}" class="post-tag">{{ tag }}</a>
+                <a href="/?tag={{ tag }}" class="post-tag rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:border-brand-500 hover:bg-brand-500 hover:text-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ tag }}</a>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
         
         {% if post.url %}
-        <div class="post-detail-url">
-            <a href="{{ post.url }}" target="_blank" rel="noopener" class="external-link-button">
+        <div class="post-detail-url mt-7 rounded-xl bg-slate-50 p-5 dark:bg-slate-800/50">
+            <a href="{{ post.url }}" target="_blank" rel="noopener" class="external-link-button inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
                 Visit External Link ↗
             </a>
-            <p class="url-text">{{ post.url }}</p>
+            <p class="url-text mt-3 text-xs text-slate-500 dark:text-slate-400">{{ post.url }}</p>
         </div>
         {% endif %}
         
-        <div class="post-detail-actions">
-            <a href="https://news.ycombinator.com/item?id={{ post.id }}" target="_blank" rel="noopener" class="hn-link">
+        <div class="post-detail-actions mt-7 border-t border-slate-200 pt-5 dark:border-slate-800">
+            <a href="https://news.ycombinator.com/item?id={{ post.id }}" target="_blank" rel="noopener" class="hn-link text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-500">
                 View on Hacker News
             </a>
         </div>

@@ -10,13 +10,15 @@ Una aplicación para obtener, categorizar, visualizar y reportar posts de Hacker
 - 💾 Almacena posts localmente en una base de datos SQLite
 - 🏷️ Categoriza posts automáticamente (story, job, ask, poll, other)
 - 🧠 **Etiquetado Inteligente**: Detecta tecnologías y temas (AI, Python, Rust, etc.) en los títulos.
-- 🔦 **Búsqueda Avanzada**: Busca por texto, autor, tags, rango de fechas y puntaje.
+- 🔦 **Búsqueda Avanzada**: Busca por texto, autor, tags, rango de fechas y puntaje. Incluye resultados combinados de posts de HN y "Posts Personales" guardados localmente.
 - 📊 **Generación de Reportes**: Exporta datos en Markdown, HTML, CSV, JSON y Texto plano.
 - 🌐 **Interfaz Web Moderna**:
-  - Diseño responsive y modo oscuro.
-  - Filtrado por categorías y tags.
+  - Diseño responsive y modo oscuro con **Tarjetas (Cards)** estilizadas con Tailwind CSS.
+  - Filtrado avanzado por categorías, tags (con diseño de burbujas/pills), y búsqueda general sin perder filtros.
+  - **Paginación Dinámica**: Selecciona la cantidad de posts por página (20, 50, 100) manteniendo tus criterios de búsqueda.
+  - **Navegación Colapsable**: Menús laterales animados para agrupar Categorías y Favoritos, con persistencia de estado.
   - **Highlighting de IA**: Resalta términos clave de IA automáticamente.
-  - Sección de "Blogs de Investigación".
+  - Sección de "Blogs de Investigación" y "Posts Personales".
   - Exportación directa de reportes desde la UI.
 - 🤖 **Integración MCP (Model Context Protocol)**:
   - Servidor compatible con FastMCP de Anthropic.
