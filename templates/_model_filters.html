@@ -1,4 +1,4 @@
-<div class="model-filters" style="margin-top:12px;">
+<div class="model-filters mt-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/60">
     <form method="get" action="{{ request.path }}">
         {# Preserve other query params #}
         {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
@@ -9,19 +9,19 @@
         {% if ai_filter %}<input type="hidden" name="ai_filter" value="{{ ai_filter }}">{% endif %}
         {% if pdf_filter %}<input type="hidden" name="pdf_filter" value="{{ pdf_filter }}">{% endif %}
 
-        <fieldset style="border:none;padding:0;margin:0">
-            <legend style="font-size:14px;margin-bottom:6px">🤖 AI Models</legend>
+        <fieldset class="m-0 border-none p-0">
+            <legend class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">🤖 AI Models</legend>
 
             {% for group, models in model_filter_options.items() %}
-            <div style="margin-bottom:8px">
-                <strong style="font-size:13px;text-transform:capitalize">
+            <div class="mb-3">
+                <strong class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     {% if group == 'private' %}🔒{% else %}🔓{% endif %}
                     {{ group.replace('_',' ') }}
                 </strong>
-                <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+                <div class="mt-2 flex flex-col gap-1.5">
                     {% for model in models %}
-                    <label style="font-size:13px;color:#333;display:flex;align-items:center;gap:6px;cursor:pointer;">
-                        <input type="checkbox" name="models" value="{{ model }}" {% if selected_models and model in
+                    <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                        <input type="checkbox" name="models" value="{{ model }}" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" {% if selected_models and model in
                             selected_models %}checked{% endif %}>
                         <span>{{ model|model_emoji }} {{ model }}</span>
                     </label>
@@ -31,8 +31,8 @@
             {% endfor %}
 
         </fieldset>
-        <div style="margin-top:8px">
-            <button type="submit" class="button">Apply</button>
+        <div class="mt-2">
+            <button type="submit" class="w-full rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700">Apply</button>
         </div>
     </form>
 </div>

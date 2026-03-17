@@ -8,35 +8,313 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>"
         type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c'
+                        }
+                    },
+                    boxShadow: {
+                        soft: '0 12px 30px -14px rgba(15, 23, 42, 0.28)'
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .category-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgb(226 232 240);
+            padding: 0.625rem 0.75rem;
+            color: rgb(51 65 85);
+            text-decoration: none;
+            transition: background-color .18s ease;
+        }
+        .category-item:last-child { border-bottom: 0; }
+        .category-item:hover { background: rgb(248 250 252); }
+        .category-item.active {
+            background: #f97316;
+            color: white;
+        }
+        .category-count {
+            border-radius: 999px;
+            background: rgb(226 232 240);
+            padding: 0.05rem 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .category-item.active .category-count {
+            background: rgba(255, 255, 255, .25);
+            color: white;
+        }
+        .group-row {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgb(226 232 240);
+            background: transparent;
+        }
+        .group-row .category-item {
+            flex: 1;
+            border-bottom: 0;
+        }
+        .group-toggle-btn {
+            margin-right: 0.5rem;
+            border: 0;
+            border-radius: 0.4rem;
+            background: transparent;
+            color: rgb(100 116 139);
+            cursor: pointer;
+            font-size: 0.75rem;
+            line-height: 1;
+            padding: 0.25rem 0.35rem;
+        }
+        .group-toggle-btn:hover { background: rgb(241 245 249); color: rgb(30 41 59); }
+        .group-toggle-btn[aria-expanded="true"] { transform: rotate(90deg); }
+        .subgroup-list {
+            overflow: hidden;
+            max-height: none;
+            opacity: 1;
+            transform: translateY(0);
+            visibility: visible;
+            transition: max-height .28s ease, opacity .2s ease, transform .2s ease;
+        }
+        .subgroup-list.is-collapsed {
+            max-height: 0;
+            opacity: 0;
+            transform: translateY(-4px);
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .subgroup-item .category-item {
+            padding-left: 1.75rem;
+            font-size: 0.86rem;
+        }
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+        .tag-item {
+            border-radius: 999px;
+            border: 1px solid rgb(226 232 240);
+            background: rgb(248 250 252);
+            color: rgb(71 85 105);
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1;
+            padding: 0.42rem 0.58rem;
+            text-decoration: none;
+            transition: all .18s ease;
+        }
+        .tag-item:hover {
+            border-color: #f97316;
+            background: #f97316;
+            color: white;
+        }
+        .tag-item.active {
+            border-color: #ea580c;
+            background: #ea580c;
+            color: white;
+        }
+        .main-tab-btn { color: rgb(100 116 139); }
+        .main-tab-btn:hover { background: rgb(241 245 249); color: rgb(30 41 59); }
+        .main-tab-btn.active { background: #f97316; color: white; }
+        .view-toggle-btn { color: rgb(100 116 139); }
+        .view-toggle-btn:hover { color: #ea580c; }
+        .view-toggle-btn.active { background: #f97316; color: white; }
+        .posts-list.grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+        .posts-list.list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .pagination {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+        }
+        .page-numbers {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .page-btn,
+        .page-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.2rem;
+            height: 2.2rem;
+            border-radius: 0.65rem;
+            border: 1px solid rgb(203 213 225);
+            background: white;
+            color: rgb(51 65 85);
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 0 0.65rem;
+            transition: all .16s ease;
+        }
+        .page-btn:hover,
+        .page-num:hover {
+            border-color: #f97316;
+            color: #ea580c;
+            background: #fff7ed;
+        }
+        .page-num.active {
+            border-color: #ea580c;
+            background: #ea580c;
+            color: white;
+            pointer-events: none;
+        }
+        .page-btn.disabled {
+            opacity: 0.45;
+            pointer-events: none;
+        }
+        .page-ellipsis {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 1.5rem;
+            color: rgb(100 116 139);
+            font-weight: 700;
+        }
+        .refresh-btn .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, .4);
+            border-top-color: white;
+            border-radius: 999px;
+            animation: hnr-spin .7s linear infinite;
+        }
+        .refresh-btn.loading .spinner { display: inline-block; }
+        .refresh-btn.loading .btn-icon { display: none; }
+        @keyframes hnr-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .fav-group-wrapper { position: relative; }
+        .fav-group-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 0.2rem);
+            width: 220px;
+            z-index: 40;
+        }
+        .fav-group-dropdown.open { display: block; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, .6);
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.open { display: flex; }
+        .personal-form-panel { display: none; }
+        .personal-form-panel.open { display: block; }
+        .fav-toggle-btn.fav-loading { opacity: .6; pointer-events: none; }
+        .category-story { background: #dbeafe; color: #1e40af; }
+        .category-job { background: #f3e8ff; color: #7e22ce; }
+        .category-ask { background: #ffedd5; color: #9a3412; }
+        .category-poll { background: #dcfce7; color: #166534; }
+        .category-other { background: #e2e8f0; color: #334155; }
+        .dark .category-item {
+            border-bottom-color: rgb(51 65 85);
+            color: rgb(203 213 225);
+        }
+        .dark .group-row { border-bottom-color: rgb(51 65 85); }
+        .dark .group-toggle-btn { color: rgb(148 163 184); }
+        .dark .group-toggle-btn:hover { background: rgb(30 41 59); color: rgb(241 245 249); }
+        .dark .category-item:hover { background: rgb(30 41 59); }
+        .dark .category-count { background: rgb(51 65 85); color: rgb(148 163 184); }
+        .dark .tag-item {
+            border-color: rgb(51 65 85);
+            background: rgb(30 41 59);
+            color: rgb(203 213 225);
+        }
+        .dark .tag-item:hover { border-color: #fb923c; background: #fb923c; color: rgb(15 23 42); }
+        .dark .tag-item.active { border-color: #f97316; background: #f97316; color: white; }
+        .dark .page-btn,
+        .dark .page-num {
+            border-color: rgb(51 65 85);
+            background: rgb(15 23 42);
+            color: rgb(203 213 225);
+        }
+        .dark .page-btn:hover,
+        .dark .page-num:hover {
+            border-color: #fb923c;
+            background: rgb(30 41 59);
+            color: #fb923c;
+        }
+        .dark .page-num.active {
+            border-color: #f97316;
+            background: #f97316;
+            color: white;
+        }
+        .dark .page-ellipsis { color: rgb(148 163 184); }
+        .dark .main-tab-btn { color: rgb(148 163 184); }
+        .dark .main-tab-btn:hover { background: rgb(30 41 59); color: rgb(241 245 249); }
+        .dark .view-toggle-btn { color: rgb(148 163 184); }
+        .dark .view-toggle-btn:hover { color: rgb(251 146 60); }
+    </style>
 </head>
 
-<body>
-    <header>
-        <div class="container">
-            <h1><a href="/">🦉 Hacker News Report</a></h1>
-            <nav>
-                <div class="search-container">
-                    <form action="/search" method="get">
+<body class="min-h-screen bg-slate-100 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200">
+    <div class="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(249,115,22,.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,.14),transparent_40%)]"></div>
+    <header class="sticky top-0 z-30 border-b border-orange-300/60 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/85">
+        <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+            <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                <a href="/" class="inline-flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-500">🦉 Hacker News Report</a>
+            </h1>
+            <nav class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div class="search-container rounded-xl border border-orange-200 bg-orange-50/70 p-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
+                    <form action="/search" method="get" class="flex items-center gap-2">
                         <input type="text" name="q" placeholder="Search posts..."
-                            value="{{ search_query if search_query else '' }}">
-                        <button type="submit">🔍</button>
+                            value="{{ search_query if search_query else '' }}"
+                            class="w-40 bg-transparent px-2 py-1 text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none dark:text-slate-200 dark:placeholder:text-slate-400 sm:w-56">
+                        <button type="submit" class="rounded-md px-2 py-1 text-sm hover:bg-orange-100 dark:hover:bg-slate-800">🔍</button>
                     </form>
                 </div>
-                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme"
+                <button id="theme-toggle"
+                    class="theme-toggle rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+                    aria-label="Toggle theme"
                     title="Toggle theme">☀️</button>
-                <a href="/">Home</a>
-                <a href="https://github.com/iJKENNEDY/hackernews-report" target="_blank">GitHub</a>
+                <a href="/" class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">Home</a>
+                <a href="https://github.com/iJKENNEDY/hackernews-report" target="_blank"
+                    class="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700 dark:bg-brand-600 dark:hover:bg-brand-500">GitHub</a>
             </nav>
         </div>
     </header>
 
-    <main class="container">
+    <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
         {% block content %}{% endblock %}
     </main>
 
-    <footer>
-        <div class="container">
+    <footer class="border-t border-slate-200/70 bg-white/70 py-4 text-sm text-slate-600 backdrop-blur dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-400">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <p>Hacker News Report - Built with Flask & Python</p>
         </div>
     </footer>
@@ -46,19 +324,25 @@
             if (!toggle) return;
             const LS_KEY = 'hnr-theme';
             function applyTheme(theme) {
-                if (theme === 'dark') document.body.classList.add('dark');
-                else document.body.classList.remove('dark');
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.body.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.body.classList.remove('dark');
+                }
                 updateIcon();
             }
             function updateIcon() {
-                if (document.body.classList.contains('dark')) toggle.textContent = '🌙';
+                if (document.documentElement.classList.contains('dark')) toggle.textContent = '🌙';
                 else toggle.textContent = '☀️';
             }
             // default to light
             const saved = localStorage.getItem(LS_KEY);
             applyTheme(saved === 'dark' ? 'dark' : 'light');
             toggle.addEventListener('click', function () {
-                const isDark = document.body.classList.toggle('dark');
+                const isDark = document.documentElement.classList.toggle('dark');
+                document.body.classList.toggle('dark', isDark);
                 localStorage.setItem(LS_KEY, isDark ? 'dark' : 'light');
                 updateIcon();
             });

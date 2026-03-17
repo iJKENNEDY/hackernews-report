@@ -70,6 +70,71 @@
             btnGrid.addEventListener('click', () => setView('grid'));
         }
 
+        // --- Favorite groups collapse/expand ---
+        const GROUP_STATE_KEY = 'hnr-favorite-groups-state';
+        const rawGroupState = localStorage.getItem(GROUP_STATE_KEY);
+        const groupState = rawGroupState ? JSON.parse(rawGroupState) : {};
+
+        function setGroupState(btn, target, collapsed, instant = false) {
+            const DURATION_MS = 280;
+
+            if (collapsed) {
+                const currentHeight = target.scrollHeight;
+                target.style.maxHeight = instant ? '0px' : `${currentHeight}px`;
+                target.style.opacity = instant ? '0' : '1';
+                target.style.transform = instant ? 'translateY(-4px)' : 'translateY(0)';
+                if (!instant) {
+                    requestAnimationFrame(() => {
+                        target.style.maxHeight = '0px';
+                        target.style.opacity = '0';
+                        target.style.transform = 'translateY(-4px)';
+                    });
+                }
+                target.classList.add('is-collapsed');
+            } else {
+                target.classList.remove('is-collapsed');
+                if (instant) {
+                    target.style.maxHeight = 'none';
+                    target.style.opacity = '1';
+                    target.style.transform = 'translateY(0)';
+                } else {
+                    target.style.maxHeight = '0px';
+                    target.style.opacity = '0';
+                    target.style.transform = 'translateY(-4px)';
+                    requestAnimationFrame(() => {
+                        target.style.maxHeight = `${target.scrollHeight}px`;
+                        target.style.opacity = '1';
+                        target.style.transform = 'translateY(0)';
+                    });
+                    setTimeout(() => {
+                        if (!target.classList.contains('is-collapsed')) {
+                            target.style.maxHeight = 'none';
+                        }
+                    }, DURATION_MS + 40);
+                }
+            }
+
+            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            groupState[target.id] = collapsed;
+            localStorage.setItem(GROUP_STATE_KEY, JSON.stringify(groupState));
+        }
+
+        document.querySelectorAll('.group-toggle-btn').forEach(btn => {
+            const targetId = btn.dataset.groupToggle;
+            const target = targetId ? document.getElementById(targetId) : null;
+            if (!target) return;
+
+            const savedCollapsed = Object.prototype.hasOwnProperty.call(groupState, targetId)
+                ? groupState[targetId]
+                : target.classList.contains('is-collapsed');
+            setGroupState(btn, target, savedCollapsed, true);
+
+            btn.addEventListener('click', function () {
+                const isCollapsed = target.classList.contains('is-collapsed');
+                setGroupState(btn, target, !isCollapsed);
+            });
+        });
+
         // --- Favorites System ---
 
         // Toggle favorite (default group)
@@ -294,11 +359,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="sidebar">
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+<aside class="sidebar space-y-6 lg:sticky lg:top-24">
     {# ──── Favorites Section ──── #}
     <div class="sidebar-section fav-sidebar-section">
-        <h2>{{ _('fav_title') }}</h2>
-        <div class="category-list">
+        <h2 class="mb-3 text-lg font-bold text-slate-800 dark:text-slate-100">{{ _('fav_title') }}</h2>
+        <div class="category-list overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <a href="/favorites"
                 class="category-item {% if current_category == 'favorites' and fav_current_group is not defined %}active{% endif %}">
                 <span class="category-name">{{ _('fav_all') }}</span>
@@ -312,32 +378,45 @@
             {% if fav_groups %}
             {% for group in fav_groups %}
             {% if not group.parent_id %}
+            {% set child_items = fav_groups | selectattr('parent_id', 'equalto', group.id) | list %}
+            {% if child_items %}
+            <div class="group-row">
+                <a href="/favorites?group={{ group.id }}"
+                    class="category-item {% if fav_current_group is defined and fav_current_group == group.id %}active{% endif %}">
+                    <span class="category-name">{{ group.emoji }} {{ group.name }}</span>
+                    <span class="category-count">{{ group.post_count }}</span>
+                </a>
+                <button type="button" class="group-toggle-btn" data-group-toggle="fav-sub-{{ group.id }}" aria-expanded="true" aria-label="Mostrar/Ocultar subgrupos">▶</button>
+            </div>
+            <div id="fav-sub-{{ group.id }}" class="subgroup-list {% if fav_current_group is defined and fav_current_group in (child_items | map(attribute='id') | list) %}{% else %}is-collapsed{% endif %}">
+                {% for sub in child_items %}
+                <div class="subgroup-item">
+                    <a href="/favorites?group={{ sub.id }}"
+                        class="category-item {% if fav_current_group is defined and fav_current_group == sub.id %}active{% endif %}">
+                        <span class="category-name">↳ {{ sub.emoji }} {{ sub.name }}</span>
+                        <span class="category-count">{{ sub.post_count }}</span>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
             <a href="/favorites?group={{ group.id }}"
                 class="category-item {% if fav_current_group is defined and fav_current_group == group.id %}active{% endif %}">
                 <span class="category-name">{{ group.emoji }} {{ group.name }}</span>
                 <span class="category-count">{{ group.post_count }}</span>
             </a>
-            {% for sub in fav_groups %}
-            {% if sub.parent_id == group.id %}
-            <a href="/favorites?group={{ sub.id }}"
-                class="category-item {% if fav_current_group is defined and fav_current_group == sub.id %}active{% endif %}"
-                style="padding-left: 2rem; font-size: 0.9em;">
-                <span class="category-name">↳ {{ sub.emoji }} {{ sub.name }}</span>
-                <span class="category-count">{{ sub.post_count }}</span>
-            </a>
             {% endif %}
-            {% endfor %}
             {% endif %}
             {% endfor %}
             {% endif %}
         </div>
-        <button id="open-group-modal" class="manage-groups-btn">
+        <button id="open-group-modal" class="manage-groups-btn mt-3 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700 dark:bg-brand-600 dark:hover:bg-brand-500">
             {{ _('fav_manage') }}
         </button>
     </div>
 
-    <h2 style="margin-top: 24px;">{{ _('cat_title') }}</h2>
-    <div class="category-list">
+    <h2 class="pt-2 text-lg font-bold text-slate-800 dark:text-slate-100">{{ _('cat_title') }}</h2>
+    <div class="category-list overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <a href="/" class="category-item {% if current_category == 'all' %}active{% endif %}">
             <span class="category-name">{{ _('cat_all') }}</span>
             <span class="category-count">{{ stats.values()|sum if stats else 0 }}</span>
@@ -365,8 +444,8 @@
     </div>
 
     {% if tag_stats %}
-    <h2 style="margin-top: 30px;">{{ _('tags_title') }}</h2>
-    <div class="tag-cloud">
+    <h2 class="pt-2 text-lg font-bold text-slate-800 dark:text-slate-100">{{ _('tags_title') }}</h2>
+    <div class="tag-cloud rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {% for tag, count in (tag_stats.items()|list)[:15] %}
         <a href="/?tag={{ tag }}" class="tag-item {% if current_tag == tag %}active{% endif %}">
             {{ tag }} <span class="tag-count">({{ count }})</span>
@@ -375,12 +454,11 @@
     </div>
     {% endif %}
 
-    <div class="sidebar-section" style="margin-top: 30px;">
-        <h2>{{ _('filters_title') }}</h2>
+    <div class="sidebar-section">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ _('filters_title') }}</h2>
         <div class="filter-options">
             <a href="{{ url_for('.index', ai_filter='off' if ai_filter == 'on' else 'on', pdf_filter=pdf_filter, category=current_category if current_category != 'search' else None, tag=current_tag) }}"
-                class="filter-toggle"
-                style="display: block; padding: 10px; background: white; border-radius: 8px; text-decoration: none; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                class="filter-toggle mt-2 block rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
                 {% if ai_filter == 'on' %}
                 <span style="color: green;">✅</span> AI Highlighting (On)
                 {% else %}
@@ -388,8 +466,7 @@
                 {% endif %}
             </a>
             <a href="{{ url_for('.index', pdf_filter='off' if pdf_filter == 'on' else 'on', ai_filter=ai_filter, category=current_category if current_category != 'search' else None, tag=current_tag) }}"
-                class="filter-toggle"
-                style="display: block; padding: 10px; background: white; border-radius: 8px; text-decoration: none; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 8px;">
+                class="filter-toggle mt-2 block rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
                 {% if pdf_filter == 'on' %}
                 <span style="color: #e53935;">📄</span> Solo PDFs (On)
                 {% else %}
@@ -401,9 +478,9 @@
         {% include '_model_filters.html' %}
     </div>
 
-    <div class="sidebar-section" style="margin-top: 30px;">
-        <h2>{{ _('export_title') }}</h2>
-        <div class="report-options">
+    <div class="sidebar-section">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ _('export_title') }}</h2>
+        <div class="report-options mt-2 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             {% set report_args = {} %}
             {% if search_query %} {% set dummy = report_args.update({'q': search_query}) %} {% endif %}
             {% if current_tag %} {% set dummy = report_args.update({'tag': current_tag}) %} {% endif %}
@@ -413,16 +490,16 @@
             {% if ai_filter %} {% set dummy = report_args.update({'ai_filter': ai_filter}) %} {% endif %}
 
             <a href="{{ url_for('.generate_report', format='markdown', **report_args) }}"
-                class="report-btn">Markdown</a>
-            <a href="{{ url_for('.generate_report', format='html', **report_args) }}" class="report-btn">HTML</a>
-            <a href="{{ url_for('.generate_report', format='csv', **report_args) }}" class="report-btn">CSV</a>
-            <a href="{{ url_for('.generate_report', format='json', **report_args) }}" class="report-btn">JSON</a>
+                class="report-btn rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-semibold text-slate-700 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">Markdown</a>
+            <a href="{{ url_for('.generate_report', format='html', **report_args) }}" class="report-btn rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-semibold text-slate-700 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">HTML</a>
+            <a href="{{ url_for('.generate_report', format='csv', **report_args) }}" class="report-btn rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-semibold text-slate-700 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">CSV</a>
+            <a href="{{ url_for('.generate_report', format='json', **report_args) }}" class="report-btn rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-semibold text-slate-700 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">JSON</a>
         </div>
     </div>
 
-    <div class="sidebar-section" style="margin-top: 30px;">
-        <h2>{{ _('blogs_title') }}</h2>
-        <div class="category-list">
+    <div class="sidebar-section">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ _('blogs_title') }}</h2>
+        <div class="category-list overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <a href="https://research.google/blog/" target="_blank" class="category-item">
                 <span class="category-name">Gemini (Google)</span>
                 <span class="external-link">↗</span>
@@ -441,18 +518,18 @@
             </a>
         </div>
     </div>
-</div>
+</aside>
 
-<div class="main-content">
+<section class="main-content min-w-0">
     {# ── Tab bar ── #}
-    <div id="main-tab-bar" class="main-tab-bar">
-        <button class="main-tab-btn active" data-tab="tab-hn" onclick="window.location='/'">{{ _('nav_hn') }}</button>
-        <button class="main-tab-btn" data-tab="tab-personal" onclick="window.location='/personal'">{{ _('nav_personal')
+    <div id="main-tab-bar" class="main-tab-bar inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <button class="main-tab-btn active rounded-lg px-4 py-2 text-sm font-semibold" data-tab="tab-hn" onclick="window.location='/'">{{ _('nav_hn') }}</button>
+        <button class="main-tab-btn rounded-lg px-4 py-2 text-sm font-semibold" data-tab="tab-personal" onclick="window.location='/personal'">{{ _('nav_personal')
             }}</button>
     </div>
 
-    <div class="header-section" style="margin-top:12px">
-        <h2>
+    <div class="header-section mt-4 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             {% if current_category == 'favorites' %}
             {{ fav_current_group_name|default(_('fav_title')) }}
             {% elif current_category == 'search' %}
@@ -471,8 +548,8 @@
             {{ _('cat_other') }}
             {% endif %}
         </h2>
-        <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
-            <div class="lang-toggle">
+        <div class="header-actions flex flex-wrap items-center gap-3">
+            <div class="lang-toggle rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800">
                 <button onclick="document.cookie='lang=en;path=/'; location.reload();" class="btn"
                     style="border:none;background:none;cursor:pointer;font-size:1.2em;opacity:{% if current_lang == 'en' %}1{% else %}0.5{% endif %};"
                     title="English">🇺🇸</button>
@@ -480,13 +557,13 @@
                     style="border:none;background:none;cursor:pointer;font-size:1.2em;opacity:{% if current_lang == 'es' %}1{% else %}0.5{% endif %};"
                     title="Español">🇪🇸</button>
             </div>
-            <button id="refresh-posts-btn" class="refresh-btn">
+            <button id="refresh-posts-btn" class="refresh-btn inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
                 <span class="btn-icon">🔄</span>
                 <div class="spinner"></div>
                 <span class="btn-text">{{ _('btn_refresh') }}</span>
             </button>
-            <div class="view-toggle" id="view-toggle">
-                <button id="view-list-btn" class="view-toggle-btn active" aria-label="{{ _('view_list') }}"
+            <div class="view-toggle inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800" id="view-toggle">
+                <button id="view-list-btn" class="view-toggle-btn active rounded-md px-2 py-1" aria-label="{{ _('view_list') }}"
                     title="{{ _('view_list') }}">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                         <rect x="1" y="2" width="16" height="2.5" rx="1" fill="currentColor" />
@@ -494,7 +571,7 @@
                         <rect x="1" y="13.5" width="16" height="2.5" rx="1" fill="currentColor" />
                     </svg>
                 </button>
-                <button id="view-grid-btn" class="view-toggle-btn" aria-label="{{ _('view_grid') }}"
+                <button id="view-grid-btn" class="view-toggle-btn rounded-md px-2 py-1" aria-label="{{ _('view_grid') }}"
                     title="{{ _('view_grid') }}">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                         <rect x="1" y="1" width="7" height="7" rx="1.5" fill="currentColor" />
@@ -504,16 +581,29 @@
                     </svg>
                 </button>
             </div>
-            <p class="post-count">{{ total_posts }} posts &middot; Página {{ page }} de {{ total_pages }}</p>
+            <form method="get" action="{{ request.path }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-800">
+                {% for key, val in request.args.items(multi=True) %}
+                {% if key != 'per_page' and key != 'page' %}
+                <input type="hidden" name="{{ key }}" value="{{ val }}">
+                {% endif %}
+                {% endfor %}
+                <label for="per-page-select" class="text-xs font-semibold text-slate-500 dark:text-slate-300">Mostrar</label>
+                <select id="per-page-select" name="per_page" onchange="this.form.submit()" class="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
+                    {% for opt in per_page_options|default([20, 50, 100]) %}
+                    <option value="{{ opt }}" {% if per_page|default(20) == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <p class="post-count text-sm text-slate-500 dark:text-slate-400">{{ total_posts }} posts &middot; Página {{ page }} de {{ total_pages }}</p>
         </div>
     </div>
 
     {% if posts %}
-    <div id="posts-container" class="posts-list list-view">
+    <div id="posts-container" class="posts-list list-view mt-4 space-y-4">
         {% for post in posts %}
-        <article class="post-card">
-            <div class="post-header">
-                <h3 class="post-title">
+        <article class="post-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
+            <div class="post-header flex items-start justify-between gap-3">
+                <h3 class="post-title text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {% if post.url %}
                     <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.title | highlight_markdown | safe
                         }}</a>
@@ -522,9 +612,9 @@
                     <a href="/post/{{ post.id }}">{{ post.title | highlight_markdown | safe }}</a>
                     {% endif %}
                 </h3>
-                <div class="post-actions-row">
+                <div class="post-actions-row flex items-center gap-2">
                     {# Favorite toggle button #}
-                    <button class="fav-toggle-btn {% if post.id in favorite_ids %}is-favorite{% endif %}"
+                    <button class="fav-toggle-btn {% if post.id in favorite_ids %}is-favorite{% endif %} rounded-md border border-slate-200 bg-white px-2 py-1 text-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
                         data-post-id="{{ post.id }}" data-group-id="0"
                         title="{% if post.id in favorite_ids %}{{ _('fav_remove') }}{% else %}{{ _('fav_add') }}{% endif %}">
                         <span class="fav-icon">{% if post.id in favorite_ids %}❤️{% else %}🤍{% endif %}</span>
@@ -532,20 +622,20 @@
                     {# Add to group dropdown #}
                     {% if fav_groups %}
                     <div class="fav-group-wrapper">
-                        <button class="fav-group-trigger" title="Agregar a grupo">
+                        <button class="fav-group-trigger rounded-md border border-slate-200 bg-white px-2 py-1 text-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800" title="Agregar a grupo">
                             <span>📂</span>
                         </button>
-                        <div class="fav-group-dropdown">
-                            <div class="fav-dropdown-header">{{ _('fav_dropdown') }}</div>
+                        <div class="fav-group-dropdown rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                            <div class="fav-dropdown-header px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ _('fav_dropdown') }}</div>
                             {% for group in fav_groups %}
                             {% if not group.parent_id %}
-                            <button class="fav-group-option" data-post-id="{{ post.id }}"
+                            <button class="fav-group-option w-full rounded-md px-2 py-1 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800" data-post-id="{{ post.id }}"
                                 data-group-id="{{ group.id }}">
                                 {{ group.emoji }} {{ group.name }}
                             </button>
                             {% for sub in fav_groups %}
                             {% if sub.parent_id == group.id %}
-                            <button class="fav-group-option" data-post-id="{{ post.id }}" data-group-id="{{ sub.id }}"
+                            <button class="fav-group-option w-full rounded-md px-2 py-1 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800" data-post-id="{{ post.id }}" data-group-id="{{ sub.id }}"
                                 style="padding-left: 1.5rem;">
                                 ↳ {{ sub.emoji }} {{ sub.name }}
                             </button>
@@ -556,34 +646,34 @@
                         </div>
                     </div>
                     {% endif %}
-                    <span class="post-category category-{{ post.category.value }}">{{ post.category.value }}</span>
+                    <span class="post-category category-{{ post.category.value }} rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide">{{ post.category.value }}</span>
                 </div>
             </div>
 
-            <div class="post-meta">
+            <div class="post-meta mt-2 flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
                 <span class="post-score">⬆ {{ post.score }} {{ _('post_points') }}</span>
                 <span class="post-author">{{ _('post_by') }} {{ post.author }}</span>
                 <span class="post-date">{{ post.created_at|timestamp_to_date }}</span>
             </div>
 
             {% if post.tags %}
-            <div class="post-tags">
+            <div class="post-tags mt-3 flex flex-wrap gap-1.5">
                 {% for tag in post.tags %}
-                <a href="/?tag={{ tag }}" class="post-tag">{{ tag }}</a>
+                <a href="/?tag={{ tag }}" class="post-tag rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-brand-500 hover:bg-brand-500 hover:text-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ tag }}</a>
                 {% endfor %}
             </div>
             {% endif %}
 
             {% if post.url %}
-            <div class="post-url">
-                <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.url|truncate(60) }}</a>
+            <div class="post-url mt-3 border-t border-slate-200 pt-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                <a href="{{ post.url }}" target="_blank" rel="noopener" class="hover:text-brand-600 dark:hover:text-brand-500">{{ post.url|truncate(60) }}</a>
             </div>
             {% endif %}
         </article>
         {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state">
+    <div class="empty-state mt-4 rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
         {% if current_category == 'favorites' %}
         <h3>{{ _('empty_fav_title') }}</h3>
         <p>{{ _('empty_fav_desc') }}</p>
@@ -596,7 +686,7 @@
     {% endif %}
 
     {% if total_pages > 1 %}
-    <nav class="pagination" aria-label="Paginación de posts">
+    <nav class="pagination mt-5" aria-label="Paginación de posts">
         {# Previous button #}
         {% if page > 1 %}
         <a href="?{% for key, val in request.args.items(multi=True) %}{% if key != 'page' %}{{ key }}={{ val }}&{% endif %}{% endfor %}page={{ page - 1 }}"
@@ -647,31 +737,32 @@
             {% endif %}
     </nav>
     {% endif %}
+</section>
 </div>
 
 {# ──── Group Management Modal ──── #}
 <div id="group-modal-overlay" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>{{ _('fav_manage') }} de Favoritos</h3>
-            <button id="close-group-modal" class="modal-close">&times;</button>
+    <div class="modal-content max-h-[85vh] w-[95vw] max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-700 dark:bg-slate-900">
+        <div class="modal-header flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ _('fav_manage') }} de Favoritos</h3>
+            <button id="close-group-modal" class="modal-close rounded-md px-2 py-1 text-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">&times;</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body space-y-4 p-4">
             <form id="create-group-form" class="create-group-form">
-                <div class="form-row">
-                    <input type="text" id="group-emoji-input" class="form-input emoji-input" value="📁" maxlength="4"
+                <div class="form-row grid grid-cols-1 gap-2 sm:grid-cols-12">
+                    <input type="text" id="group-emoji-input" class="form-input emoji-input rounded-lg border border-slate-300 px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 sm:col-span-2" value="📁" maxlength="4"
                         title="Emoji del grupo">
-                    <input type="text" id="group-name-input" class="form-input"
+                    <input type="text" id="group-name-input" class="form-input rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 sm:col-span-4"
                         placeholder="{{ _('modal_group_name') }}" required maxlength="50">
-                    <select id="group-parent-input" class="form-input" title="Grupo Padre">
+                    <select id="group-parent-input" class="form-input rounded-lg border border-slate-300 px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 sm:col-span-3" title="Grupo Padre">
                         <option value="">{{ _('modal_group_parent') }}</option>
                     </select>
-                    <input type="color" id="group-color-input" class="form-input color-input" value="#ff6600"
+                    <input type="color" id="group-color-input" class="form-input color-input h-10 w-full rounded-lg border border-slate-300 p-1 dark:border-slate-700 dark:bg-slate-800 sm:col-span-1" value="#ff6600"
                         title="Color del grupo">
-                    <button type="submit" class="create-group-btn">{{ _('modal_group_create') }}</button>
+                    <button type="submit" class="create-group-btn rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 sm:col-span-2">{{ _('modal_group_create') }}</button>
                 </div>
             </form>
-            <div id="modal-groups-list" class="modal-groups-list">
+            <div id="modal-groups-list" class="modal-groups-list max-h-[50vh] overflow-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700">
                 <p class="no-groups-msg">{{ _('modal_group_loading') }}</p>
             </div>
         </div>
