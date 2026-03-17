@@ -1,0 +1,42 @@
+{
+    "folders": [
+        {
+            "name":"mcp-hnew",
+            "path": "mcp-hackernews"
+        },
+        {
+            "name":"project HN",
+            "path": "src"
+        },
+        {
+            "name":"frontend",
+            "path": ["static","templates"]
+        },
+        {
+            "name":"root",
+            "path": "."
+        }
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/.git": true,
+            "**/.svn": true,
+            "**/.hg": true,
+            "**/.DS_Store": true,
+            "**/Thumbs.db": true,
+            "**/.venv": true,
+            "**/node_modules": true,
+            "__pycache__": true,
+            "hackernews_report.egg-info": true,
+            //root
+            "mcp-hackernews": true,
+            "src": true,
+            ".hypothesis": true,
+            ".pytest_cache": true,
+            ".vscode": true,
+            "htmlcov": true,
+            "instance": true,
+            ".gitignore":true
+        }
+    }
+}
