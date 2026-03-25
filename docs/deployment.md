@@ -42,16 +42,6 @@ Asegúrate de tener instalados Docker y Docker Compose.
     python -m src.cli --help
     ```
 
-## Interfaz Gráfica (GUI)
-
-Se ha incluido una herramienta visual para la gestión de archivos PDF.
-
-1.  **Ejecutar el Unidor de PDFs**:
-    ```bash
-    python gui_pdf_merger.py
-    ```
-    Esta interfaz permite seleccionar archivos de tu disco local, organizarlos y unirlos visualmente.
-
 ## Variables de Entorno
 - `FLASK_APP`: `src/web_app.py`
 - `PORT`: Puerto de escucha (default 5000)
