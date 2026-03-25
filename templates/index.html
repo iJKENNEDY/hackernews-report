@@ -42,52 +42,6 @@
             });
         }
 
-        // --- PDF Merging ---
-        const mergePdfBtn = document.getElementById('merge-pdf-btn');
-        if (mergePdfBtn) {
-            mergePdfBtn.addEventListener('click', async function() {
-                const selectedCheckboxes = document.querySelectorAll('.pdf-merge-checkbox:checked');
-                const urls = Array.from(selectedCheckboxes).map(cb => cb.dataset.pdfUrl);
-
-                if (urls.length < 2) {
-                    alert('Por favor selecciona al menos 2 PDFs para unir.');
-                    return;
-                }
-
-                mergePdfBtn.disabled = true;
-                const originalText = mergePdfBtn.querySelector('.btn-text').textContent;
-                mergePdfBtn.querySelector('.btn-text').textContent = 'Uniendo...';
-
-                try {
-                    const response = await fetch('/api/pdf/merge', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ urls: urls })
-                    });
-
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        const downloadUrl = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = downloadUrl;
-                        a.download = 'merged_hn_reports.pdf';
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                    } else {
-                        const data = await response.json();
-                        alert('Error: ' + (data.error || 'Error desconocido'));
-                    }
-                } catch (err) {
-                    console.error('Merge failed:', err);
-                    alert('Error de red al intentar unir los PDFs.');
-                } finally {
-                    mergePdfBtn.disabled = false;
-                    mergePdfBtn.querySelector('.btn-text').textContent = originalText;
-                }
-            });
-        }
-
         // --- View toggle (list / grid) ---
         const VIEW_KEY = 'hnr-view-mode';
         const postsList = document.getElementById('posts-container');
@@ -608,10 +562,6 @@
                 <div class="spinner"></div>
                 <span class="btn-text">{{ _('btn_refresh') }}</span>
             </button>
-            <button id="merge-pdf-btn" class="merge-pdf-btn inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600">
-                <span class="btn-icon">📄🔗</span>
-                <span class="btn-text">Unir Seleccionados</span>
-            </button>
             <div class="view-toggle inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800" id="view-toggle">
                 <button id="view-list-btn" class="view-toggle-btn active rounded-md px-2 py-1" aria-label="{{ _('view_list') }}"
                     title="{{ _('view_list') }}">
@@ -653,11 +603,7 @@
         {% for post in posts %}
         <article class="post-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
             <div class="post-header flex items-start justify-between gap-3">
-                <div class="flex items-start gap-3">
-                    {% if post.url and post.url.lower().endswith('.pdf') %}
-                    <input type="checkbox" class="pdf-merge-checkbox mt-1.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" data-pdf-url="{{ post.url }}" title="Seleccionar para unir">
-                    {% endif %}
-                    <h3 class="post-title text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <h3 class="post-title text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {% if post.url %}
                     <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.title | highlight_markdown | safe
                         }}</a>

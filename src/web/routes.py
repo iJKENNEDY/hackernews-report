@@ -762,62 +762,6 @@ def api_delete_group(group_id):
         return jsonify({'error': 'Group not found'}), 404
 
 
-from src.utils.pdf_service import merge_pdfs
-import os
-import tempfile
-import requests
-
-
-# ──────────── PDF Merging API ────────────
-
-@bp.route('/api/pdf/merge', methods=['POST'])
-def api_pdf_merge():
-    """Merge multiple PDFs from URLs and return the result."""
-    data = request.get_json()
-    if not data or 'urls' not in data or len(data['urls']) < 2:
-        return jsonify({'error': 'Al menos 2 URLs de PDF son requeridas'}), 400
-
-    urls = data['urls']
-    temp_files = []
-    
-    try:
-        # Download PDFs to temporary files
-        for url in urls:
-            response = requests.get(url, timeout=15)
-            if response.status_code != 200:
-                return jsonify({'error': f'Error al descargar {url}'}), 400
-            
-            temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-            temp_pdf.write(response.content)
-            temp_pdf.close()
-            temp_files.append(temp_pdf.name)
-        
-        # Merge them
-        output_path = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf').name
-        if merge_pdfs(temp_files, output_path):
-            with open(output_path, 'rb') as f:
-                merged_content = f.read()
-            
-            # Clean up
-            os.remove(output_path)
-            for tf in temp_files:
-                os.remove(tf)
-                
-            return Response(
-                merged_content,
-                mimetype='application/pdf',
-                headers={"Content-disposition": "attachment; filename=merged_hn_reports.pdf"}
-            )
-        else:
-            return jsonify({'error': 'Error al procesar la unión de PDFs'}), 500
-            
-    except Exception as e:
-        # Cleanup on error
-        for tf in temp_files:
-            if os.path.exists(tf): os.remove(tf)
-        return jsonify({'error': str(e)}), 500
-
-
 # ──────────── Personal Posts ────────────
 
 def _get_personal_manager() -> PersonalPostsManager:
