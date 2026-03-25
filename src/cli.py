@@ -10,7 +10,6 @@ from src.search_service import SearchService
 from src.service import HackerNewsService
 from src.models import Category, Post, SearchQuery
 from src.tags import TagSystem
-from src.utils.pdf_service import merge_pdfs
 
 
 # Configure logging
@@ -123,22 +122,6 @@ class CLI:
             help="Output file path (default: print to stdout)"
         )
         
-        # Merge PDF command
-        merge_parser = subparsers.add_parser(
-            "merge-pdf",
-            help="Merge multiple PDF files into one"
-        )
-        merge_parser.add_argument(
-            "inputs",
-            nargs="+",
-            help="Path to the PDF files to merge (at least 2)"
-        )
-        merge_parser.add_argument(
-            "--output",
-            required=True,
-            help="Path for the merged output PDF file"
-        )
-        
         # Parse arguments
         parsed_args = parser.parse_args(args)
         
@@ -172,9 +155,6 @@ class CLI:
                     print("Error: Report service not initialized.", file=sys.stderr)
                     return 1
                 self.handle_report(parsed_args)
-                return 0
-            elif parsed_args.command == "merge-pdf":
-                self.handle_merge_pdf(parsed_args.inputs, parsed_args.output)
                 return 0
             else:
                 print(f"Unknown command: {parsed_args.command}", file=sys.stderr)
@@ -442,23 +422,6 @@ class CLI:
         except Exception as e:
             logger.error(f"Report generation failed: {e}")
             print(f"Error: Failed to generate report - {e}", file=sys.stderr)
-
-    def handle_merge_pdf(self, inputs: List[str], output: str) -> None:
-        """
-        Handle the merge-pdf command - merge multiple PDF files.
-        
-        Args:
-            inputs: List of input PDF paths
-            output: Output PDF path
-        """
-        try:
-            print(f"Merging {len(inputs)} PDFs into {output}...")
-            if merge_pdfs(inputs, output):
-                print(f"[+] Successfully merged PDFs into: {output}")
-            else:
-                print(f"[!] Failed to merge PDFs.", file=sys.stderr)
-        except Exception as e:
-            print(f"Error: {e}", file=sys.stderr)
 
     def _has_search_criteria(self, args) -> bool:
         """Check if any search arguments are provided."""

@@ -11,6 +11,3 @@ flask==3.0.0
 
 # MCP dependencies
 mcp
-
-# PDF utilities
-pypdf>=4.0.0
