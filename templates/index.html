@@ -5,6 +5,122 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        function showToast(message, variant = 'success') {
+            const isError = variant === 'error';
+            const icon = isError ? '⚠️' : '✅';
+            const durationMs = 4200;
+
+            let container = document.getElementById('hnr-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'hnr-toast-container';
+                container.style.position = 'fixed';
+                container.style.top = '18px';
+                container.style.right = '18px';
+                container.style.zIndex = '1200';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '10px';
+                container.style.maxWidth = '420px';
+                container.style.width = 'calc(100vw - 36px)';
+                container.style.pointerEvents = 'none';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.style.pointerEvents = 'auto';
+            toast.style.borderRadius = '10px';
+            toast.style.color = '#ffffff';
+            toast.style.background = isError ? '#b91c1c' : '#15803d';
+            toast.style.boxShadow = '0 12px 30px -14px rgba(15, 23, 42, 0.45)';
+            toast.style.fontSize = '14px';
+            toast.style.fontWeight = '700';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-6px)';
+            toast.style.transition = 'all .2s ease';
+            toast.style.overflow = 'hidden';
+
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.alignItems = 'start';
+            row.style.gap = '10px';
+            row.style.padding = '11px 12px 9px 12px';
+
+            const iconEl = document.createElement('span');
+            iconEl.textContent = icon;
+            iconEl.style.lineHeight = '1';
+
+            const textEl = document.createElement('div');
+            textEl.textContent = message;
+            textEl.style.flex = '1';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.textContent = '✕';
+            closeBtn.setAttribute('aria-label', 'Cerrar notificacion');
+            closeBtn.style.border = '0';
+            closeBtn.style.background = 'transparent';
+            closeBtn.style.color = '#ffffff';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.style.fontSize = '12px';
+            closeBtn.style.fontWeight = '700';
+            closeBtn.style.padding = '2px 0 0 0';
+            closeBtn.style.opacity = '.9';
+
+            const progressWrap = document.createElement('div');
+            progressWrap.style.height = '3px';
+            progressWrap.style.background = 'rgba(255,255,255,.25)';
+
+            const progressBar = document.createElement('div');
+            progressBar.style.height = '100%';
+            progressBar.style.width = '100%';
+            progressBar.style.transformOrigin = 'left center';
+            progressBar.style.background = 'rgba(255,255,255,.9)';
+            progressBar.style.transition = `transform ${durationMs}ms linear`;
+
+            row.appendChild(iconEl);
+            row.appendChild(textEl);
+            row.appendChild(closeBtn);
+            progressWrap.appendChild(progressBar);
+            toast.appendChild(row);
+            toast.appendChild(progressWrap);
+            container.appendChild(toast);
+
+            let dismissed = false;
+            const dismiss = () => {
+                if (dismissed) return;
+                dismissed = true;
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-6px)';
+                setTimeout(() => toast.remove(), 220);
+            };
+
+            closeBtn.addEventListener('click', dismiss);
+
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+                requestAnimationFrame(() => {
+                    progressBar.style.transform = 'scaleX(0)';
+                });
+            });
+
+            setTimeout(dismiss, durationMs);
+        }
+
+        const refreshToastRaw = sessionStorage.getItem('hnr-refresh-toast');
+        if (refreshToastRaw) {
+            sessionStorage.removeItem('hnr-refresh-toast');
+            try {
+                const payload = JSON.parse(refreshToastRaw);
+                const count = Number(payload.new_posts || 0);
+                const noun = count === 1 ? 'post nuevo' : 'posts nuevos';
+                showToast(`Actualizacion completada: ${count} ${noun}.`);
+            } catch (err) {
+                showToast('Actualizacion completada.');
+            }
+        }
+
         // --- Refresh button ---
         const refreshBtn = document.getElementById('refresh-posts-btn');
         if (refreshBtn) {
@@ -23,6 +139,10 @@
 
                     if (data.status === 'success') {
                         btnText.textContent = `{{ _('btn_refresh_done') }} (${data.new_posts} nuevos)`;
+                        sessionStorage.setItem('hnr-refresh-toast', JSON.stringify({
+                            new_posts: data.new_posts,
+                            updated_posts: data.updated_posts
+                        }));
                         setTimeout(() => {
                             window.location.reload();
                         }, 1500);
@@ -32,6 +152,7 @@
                 } catch (error) {
                     console.error('Refresh failed:', error);
                     btnText.textContent = '{{ _('btn_refresh_error') }}';
+                    showToast('No se pudieron actualizar los posts.', 'error');
                     refreshBtn.classList.remove('loading');
                     refreshBtn.disabled = false;
 
