@@ -35,6 +35,11 @@ TRANSLATIONS = {
         'btn_refreshing': 'Actualizando...',
         'btn_refresh_done': '¡Listo!',
         'btn_refresh_error': 'Error',
+        'toast_refresh_ok': 'Actualizacion completada: {count} {noun}.',
+        'toast_refresh_ok_fallback': 'Actualizacion completada.',
+        'toast_refresh_err': 'No se pudieron actualizar los posts.',
+        'toast_post_singular': 'post nuevo',
+        'toast_post_plural': 'posts nuevos',
 
         'view_list': 'Vista lista',
         'view_grid': 'Vista grilla',
@@ -99,6 +104,11 @@ TRANSLATIONS = {
         'btn_refreshing': 'Refreshing...',
         'btn_refresh_done': 'Done!',
         'btn_refresh_error': 'Error',
+        'toast_refresh_ok': 'Refresh completed: {count} {noun}.',
+        'toast_refresh_ok_fallback': 'Refresh completed.',
+        'toast_refresh_err': 'Could not refresh posts.',
+        'toast_post_singular': 'new post',
+        'toast_post_plural': 'new posts',
 
         'view_list': 'List view',
         'view_grid': 'Grid view',

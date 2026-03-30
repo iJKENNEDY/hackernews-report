@@ -114,10 +114,13 @@
             try {
                 const payload = JSON.parse(refreshToastRaw);
                 const count = Number(payload.new_posts || 0);
-                const noun = count === 1 ? 'post nuevo' : 'posts nuevos';
-                showToast(`Actualizacion completada: ${count} ${noun}.`);
+                const noun = count === 1 ? "{{ _('toast_post_singular') }}" : "{{ _('toast_post_plural') }}";
+                const message = "{{ _('toast_refresh_ok') }}"
+                    .replace('{count}', String(count))
+                    .replace('{noun}', noun);
+                showToast(message);
             } catch (err) {
-                showToast('Actualizacion completada.');
+                showToast("{{ _('toast_refresh_ok_fallback') }}");
             }
         }
 
@@ -152,7 +155,7 @@
                 } catch (error) {
                     console.error('Refresh failed:', error);
                     btnText.textContent = '{{ _('btn_refresh_error') }}';
-                    showToast('No se pudieron actualizar los posts.', 'error');
+                    showToast("{{ _('toast_refresh_err') }}", 'error');
                     refreshBtn.classList.remove('loading');
                     refreshBtn.disabled = false;
 
