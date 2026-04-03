@@ -795,9 +795,16 @@ def personal_posts_page():
     tag_filter = request.args.get('tag', None)
 
     posts = mgr.get_posts(category_id=category_id, tag=tag_filter)
+    all_personal_posts = mgr.get_posts()
     categories_tree = mgr.get_categories_tree()
     categories_flat = mgr.get_categories_flat()
     all_tags = mgr.get_all_tags()
+
+    personal_category_counts = {}
+    for p in all_personal_posts:
+        if p.category_id is None:
+            continue
+        personal_category_counts[p.category_id] = personal_category_counts.get(p.category_id, 0) + 1
 
     # Sidebar data shared with the base template
     stats = db.get_category_counts()
@@ -811,6 +818,7 @@ def personal_posts_page():
     return render_template(
         'personal_posts.html',
         personal_posts=posts,
+        personal_category_counts=personal_category_counts,
         categories_tree=categories_tree,
         categories_flat=categories_flat,
         all_tags=all_tags,
