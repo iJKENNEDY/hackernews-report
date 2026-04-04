@@ -468,14 +468,14 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="category-list overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <a href="/personal" class="category-item pp-cat-filter-link {% if not current_category_id and not current_tag %}active{% endif %}" data-cat-id="">
                 <span class="category-name">📋 Todos</span>
-                <span class="category-count">{{ personal_posts | length }}</span>
+                <span class="category-count">{{ (personal_category_counts.values() | sum) }}</span>
             </a>
             {% for cat in categories_tree %}
             {% if cat.children %}
             <div class="group-row">
                 <a href="/personal?category_id={{ cat.id }}" class="category-item pp-cat-filter-link {% if current_category_id == cat.id %}active{% endif %}" data-cat-id="{{ cat.id }}">
                     <span class="category-name">{{ cat.emoji }} {{ cat.name }}</span>
-                    <span class="category-count">{{ cat.post_count|default(0) }}</span>
+                    <span class="category-count">{{ personal_category_counts.get(cat.id, 0) }}</span>
                 </a>
                 <button type="button" class="group-toggle-btn" data-group-toggle="cat-sub-{{ cat.id }}" aria-expanded="true" aria-label="Mostrar/Ocultar subgrupos">▶</button>
             </div>
@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="subgroup-item">
                     <a href="/personal?category_id={{ sub.id }}" class="category-item pp-cat-filter-link {% if current_category_id == sub.id %}active{% endif %}" data-cat-id="{{ sub.id }}">
                         <span class="category-name">↳ {{ sub.emoji }} {{ sub.name }}</span>
-                        <span class="category-count">{{ sub.post_count|default(0) }}</span>
+                        <span class="category-count">{{ personal_category_counts.get(sub.id, 0) }}</span>
                     </a>
                 </div>
                 {% endfor %}
@@ -492,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function () {
             {% else %}
             <a href="/personal?category_id={{ cat.id }}" class="category-item pp-cat-filter-link {% if current_category_id == cat.id %}active{% endif %}" data-cat-id="{{ cat.id }}">
                 <span class="category-name">{{ cat.emoji }} {{ cat.name }}</span>
-                <span class="category-count">{{ cat.post_count|default(0) }}</span>
+                <span class="category-count">{{ personal_category_counts.get(cat.id, 0) }}</span>
             </a>
             {% endif %}
             {% endfor %}
