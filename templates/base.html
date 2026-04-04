@@ -197,6 +197,17 @@
             color: rgb(100 116 139);
             font-weight: 700;
         }
+        .post-card.post-newly-added {
+            border-color: rgb(251 191 36);
+            background: linear-gradient(180deg, rgba(254, 240, 138, 0.55), rgba(255, 255, 255, 1));
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5), 0 16px 32px -20px rgba(217, 119, 6, 0.5);
+            animation: hnr-new-post-pulse 1.15s ease-in-out 2;
+        }
+        @keyframes hnr-new-post-pulse {
+            0% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15), 0 10px 24px -20px rgba(217, 119, 6, 0.35); }
+            50% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.62), 0 18px 36px -22px rgba(217, 119, 6, 0.58); }
+            100% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5), 0 16px 32px -20px rgba(217, 119, 6, 0.5); }
+        }
         .refresh-btn .spinner {
             display: none;
             width: 16px;
@@ -355,6 +366,11 @@
             border-color: #f97316;
             background: #f97316;
             color: white;
+        }
+        .dark .post-card.post-newly-added {
+            border-color: rgb(217 119 6);
+            background: linear-gradient(180deg, rgba(120, 53, 15, 0.38), rgba(15, 23, 42, 1));
+            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.35), 0 18px 34px -22px rgba(0, 0, 0, 0.65);
         }
         .dark .page-ellipsis { color: rgb(148 163 184); }
         .dark .main-tab-btn { color: rgb(148 163 184); }

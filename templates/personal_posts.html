@@ -67,10 +67,36 @@ document.addEventListener('DOMContentLoaded', function () {
         return `<span class="source-badge inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${s.cls}">${s.label}</span>`;
     }
 
+    function randomTagColors() {
+        const palette = [
+            ['#fecdd3', '#fff1f2', '#be123c'],
+            ['#fde68a', '#fffbeb', '#b45309'],
+            ['#c7f9cc', '#ecfdf3', '#166534'],
+            ['#bae6fd', '#f0f9ff', '#0369a1'],
+            ['#ddd6fe', '#f5f3ff', '#5b21b6'],
+            ['#fbcfe8', '#fdf2f8', '#9d174d'],
+            ['#fed7aa', '#fff7ed', '#c2410c'],
+            ['#bfdbfe', '#eff6ff', '#1d4ed8']
+        ];
+        return palette[Math.floor(Math.random() * palette.length)];
+    }
+
     function tagsHtml(tags) {
         if (!tags || !tags.length) return '';
-        return `<div class="post-tags mt-3 flex flex-wrap gap-1.5">${tags.map(t =>
-            `<span class="post-tag personal-tag rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">${t}</span>`).join('')}</div>`;
+        return `<div class="post-tags mt-3 flex flex-wrap gap-1.5">${tags.map(t => {
+            const [border, bg, text] = randomTagColors();
+            return `<span class="post-tag personal-tag rounded-full border px-2.5 py-1 text-xs font-medium" style="border-color:${border};background-color:${bg};color:${text}">${t}</span>`;
+        }).join('')}</div>`;
+    }
+
+    function applyRandomListedTagColors() {
+        document.querySelectorAll('.tag-cloud .tag-item').forEach(el => {
+            if (el.classList.contains('active')) return;
+            const [border, bg, text] = randomTagColors();
+            el.style.borderColor = border;
+            el.style.backgroundColor = bg;
+            el.style.color = text;
+        });
     }
 
     function categoryBreadcrumb(post) {
@@ -428,6 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     loadCategoriesCache().then(() => populateCategorySelect());
     loadPosts(initialParams);
+    applyRandomListedTagColors();
 });
 </script>
 {% endblock %}

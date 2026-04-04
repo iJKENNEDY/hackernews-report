@@ -26,6 +26,7 @@ class FetchResult:
     new_posts: int
     updated_posts: int
     errors: List[str]
+    new_post_ids: List[int]
 
 
 class HackerNewsService:
@@ -71,6 +72,7 @@ class HackerNewsService:
         new_posts = 0
         updated_posts = 0
         errors = []
+        new_post_ids: List[int] = []
         
         try:
             # Fetch top story IDs
@@ -81,7 +83,7 @@ class HackerNewsService:
                 error_msg = "No story IDs retrieved from API"
                 logger.warning(error_msg)
                 errors.append(error_msg)
-                return FetchResult(new_posts=0, updated_posts=0, errors=errors)
+                return FetchResult(new_posts=0, updated_posts=0, errors=errors, new_post_ids=[])
             
             logger.info(f"Retrieved {len(story_ids)} story IDs")
             
@@ -92,7 +94,7 @@ class HackerNewsService:
                 error_msg = "No valid posts retrieved from API"
                 logger.warning(error_msg)
                 errors.append(error_msg)
-                return FetchResult(new_posts=0, updated_posts=0, errors=errors)
+                return FetchResult(new_posts=0, updated_posts=0, errors=errors, new_post_ids=[])
             
             logger.info(f"Retrieved {len(posts)} valid posts")
             
@@ -119,6 +121,7 @@ class HackerNewsService:
                                 logger.debug(f"Updated post {post.id}: {post.title}")
                             else:
                                 new_posts += 1
+                                new_post_ids.append(post.id)
                                 logger.debug(f"Inserted new post {post.id}: {post.title}")
                         else:
                             error_msg = f"Failed to store post {post.id}"
@@ -146,7 +149,8 @@ class HackerNewsService:
         return FetchResult(
             new_posts=new_posts,
             updated_posts=updated_posts,
-            errors=errors
+            errors=errors,
+            new_post_ids=new_post_ids
         )
 
     def get_posts_by_category(self, category: Optional[Category] = None) -> List[Post]:

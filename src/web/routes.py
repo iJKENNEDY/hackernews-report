@@ -281,6 +281,7 @@ def refresh():
         'status': 'success',
         'new_posts': result.new_posts,
         'updated_posts': result.updated_posts,
+        'new_post_ids': result.new_post_ids,
         'errors': result.errors
     })
 

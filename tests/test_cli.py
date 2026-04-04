@@ -178,7 +178,8 @@ class TestCLIUnit:
         mock_service.fetch_and_store_posts.return_value = FetchResult(
             new_posts=10,
             updated_posts=5,
-            errors=[]
+            errors=[],
+            new_post_ids=[]
         )
 
         cli = CLI(mock_service)
@@ -296,7 +297,8 @@ class TestCLIUnit:
         mock_service.fetch_and_store_posts.return_value = FetchResult(
             new_posts=5,
             updated_posts=0,
-            errors=["Error 1", "Error 2", "Error 3"]
+            errors=["Error 1", "Error 2", "Error 3"],
+            new_post_ids=[]
         )
 
         cli = CLI(mock_service)
