@@ -202,6 +202,68 @@ class TestServicePropertyBased:
             if os.path.exists(db_path):
                 os.unlink(db_path)
 
+    def test_fetch_and_store_posts_uses_new_source_with_backfill(self):
+        """Fetch from new stories and skip IDs already in DB."""
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path)
+            db.initialize_schema()
+
+            existing = Post(
+                id=1,
+                title="Existing",
+                author="old",
+                score=1,
+                url=None,
+                created_at=123,
+                type="story",
+                category=Category.STORY,
+                fetched_at=124,
+            )
+            db.upsert_post(existing)
+
+            mock_api = Mock(spec=HNApiClient)
+            mock_api.get_new_stories.return_value = [1, 2, 3]
+            mock_api.get_items_batch.return_value = [
+                Post(
+                    id=2,
+                    title="New 2",
+                    author="a",
+                    score=10,
+                    url=None,
+                    created_at=200,
+                    type="story",
+                    category=Category.STORY,
+                    fetched_at=201,
+                ),
+                Post(
+                    id=3,
+                    title="New 3",
+                    author="b",
+                    score=11,
+                    url=None,
+                    created_at=201,
+                    type="story",
+                    category=Category.STORY,
+                    fetched_at=202,
+                ),
+            ]
+
+            service = HackerNewsService(api_client=mock_api, database=db)
+            result = service.fetch_and_store_posts(limit=2, source="new")
+
+            mock_api.get_new_stories.assert_called_once_with(limit=max(2 * 10, 2))
+            mock_api.get_top_stories.assert_not_called()
+            assert result.new_posts == 2
+            assert result.updated_posts == 0
+
+            db.close()
+        finally:
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
     @given(
         limit=st.integers(min_value=1, max_value=50),
         available_posts=st.integers(min_value=1, max_value=100)
@@ -254,8 +316,8 @@ class TestServicePropertyBased:
             service = HackerNewsService(api_client=mock_api, database=db)
             result = service.fetch_and_store_posts(limit=limit)
 
-            # Verify the API was called with the correct limit
-            mock_api.get_top_stories.assert_called_once_with(limit=limit)
+            # Verify the API was called with the expanded scan limit for backfill
+            mock_api.get_top_stories.assert_called_once_with(limit=max(limit * 10, limit))
 
             # Verify we got at most 'limit' posts
             total_fetched = result.new_posts + result.updated_posts

@@ -192,6 +192,36 @@ class HNApiClient:
         
         # Return up to 'limit' story IDs
         return story_ids[:limit]
+
+    @retry
+    def get_new_stories(self, limit: int = 50) -> List[int]:
+        """
+        Get the IDs of newest stories from Hacker News.
+
+        Args:
+            limit: Maximum number of story IDs to return (default: 50)
+
+        Returns:
+            List of story IDs
+
+        Raises:
+            requests.exceptions.RequestException: On network errors
+        """
+        url = f"{self.base_url}/newstories.json"
+        logger.debug(f"Fetching new stories from {url}")
+
+        response = requests.get(url, timeout=self.timeout)
+        response.raise_for_status()
+
+        story_ids = response.json()
+
+        # Validate response is a list
+        if not isinstance(story_ids, list):
+            logger.error(f"Invalid response format: expected list, got {type(story_ids)}")
+            return []
+
+        # Return up to 'limit' story IDs
+        return story_ids[:limit]
     
     @retry
     def get_item(self, item_id: int) -> Optional[Post]:

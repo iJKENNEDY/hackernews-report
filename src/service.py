@@ -52,7 +52,34 @@ class HackerNewsService:
         self.api_client = api_client
         self.database = database
 
-    def fetch_and_store_posts(self, limit: int = 30) -> FetchResult:
+    def _fetch_story_ids_with_backfill(self, limit: int, source: str = "top") -> List[int]:
+        """
+        Fetch story IDs with DB-aware backfill to avoid missing new posts.
+
+        If many IDs in the first page are already stored, this keeps reading
+        additional IDs from the same source and only returns up to `limit`
+        IDs that are not yet present in the database.
+        """
+        max_scan = max(limit * 10, limit)
+        all_ids = (
+            self.api_client.get_new_stories(limit=max_scan)
+            if source == "new"
+            else self.api_client.get_top_stories(limit=max_scan)
+        )
+
+        if not all_ids:
+            return []
+
+        selected_ids: List[int] = []
+        for story_id in all_ids:
+            if not self.database.post_exists(story_id):
+                selected_ids.append(story_id)
+                if len(selected_ids) >= limit:
+                    break
+
+        return selected_ids
+
+    def fetch_and_store_posts(self, limit: int = 30, source: str = "top") -> FetchResult:
         """
         Fetch posts from Hacker News API and store them in the database.
         
@@ -65,6 +92,7 @@ class HackerNewsService:
         
         Args:
             limit: Maximum number of posts to fetch (default: 30)
+            source: Story source, either "top" or "new" (default: "top")
             
         Returns:
             FetchResult with counts of new/updated posts and any errors
@@ -75,9 +103,12 @@ class HackerNewsService:
         new_post_ids: List[int] = []
         
         try:
-            # Fetch top story IDs
-            logger.info(f"Fetching top {limit} story IDs from Hacker News API")
-            story_ids = self.api_client.get_top_stories(limit=limit)
+            if source not in ("top", "new"):
+                raise ValueError("source must be 'top' or 'new'")
+
+            # Fetch story IDs with backfill from the selected source
+            logger.info(f"Fetching up to {limit} {source} story IDs from Hacker News API")
+            story_ids = self._fetch_story_ids_with_backfill(limit=limit, source=source)
             
             if not story_ids:
                 error_msg = "No story IDs retrieved from API"

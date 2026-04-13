@@ -86,6 +86,24 @@ class TestHNApiClient:
         assert client.max_retries == 5
         assert client.timeout == 20
 
+    def test_get_new_stories_returns_limited_ids(self):
+        """Test that get_new_stories fetches and applies limit correctly."""
+        client = HNApiClient()
+
+        with patch('requests.get') as mock_get:
+            mock_response = Mock()
+            mock_response.json.return_value = [10, 9, 8, 7]
+            mock_response.raise_for_status.return_value = None
+            mock_get.return_value = mock_response
+
+            story_ids = client.get_new_stories(limit=2)
+
+            assert story_ids == [10, 9]
+            mock_get.assert_called_once_with(
+                "https://hacker-news.firebaseio.com/v0/newstories.json",
+                timeout=10,
+            )
+
 
 # Feature: hackernews-report, Property 1: Validación de campos completos
 # Validates: Requirements 1.2, 1.5
