@@ -60,22 +60,38 @@ class HackerNewsService:
         additional IDs from the same source and only returns up to `limit`
         IDs that are not yet present in the database.
         """
-        max_scan = max(limit * 10, limit)
-        all_ids = (
-            self.api_client.get_new_stories(limit=max_scan)
-            if source == "new"
-            else self.api_client.get_top_stories(limit=max_scan)
-        )
+        max_scan = max(limit * 20, 500)
+        if source == "new":
+            all_ids = self.api_client.get_new_stories(limit=max_scan)
+        elif source == "top":
+            all_ids = self.api_client.get_top_stories(limit=max_scan)
+        else:
+            top_ids = self.api_client.get_top_stories(limit=max_scan)
+            new_ids = self.api_client.get_new_stories(limit=max_scan)
+            all_ids = list(dict.fromkeys([*top_ids, *new_ids]))
 
         if not all_ids:
             return []
 
         selected_ids: List[int] = []
+        selected_set = set()
+
+        # Pass 1: prioritize unseen posts so new items are not skipped
         for story_id in all_ids:
             if not self.database.post_exists(story_id):
                 selected_ids.append(story_id)
+                selected_set.add(story_id)
                 if len(selected_ids) >= limit:
                     break
+
+        # Pass 2: fill with already-known posts to keep the refresh complete
+        if len(selected_ids) < limit:
+            for story_id in all_ids:
+                if story_id not in selected_set:
+                    selected_ids.append(story_id)
+                    selected_set.add(story_id)
+                    if len(selected_ids) >= limit:
+                        break
 
         return selected_ids
 
@@ -92,7 +108,7 @@ class HackerNewsService:
         
         Args:
             limit: Maximum number of posts to fetch (default: 30)
-            source: Story source, either "top" or "new" (default: "top")
+            source: Story source: "top", "new", or "mixed" (default: "top")
             
         Returns:
             FetchResult with counts of new/updated posts and any errors
@@ -103,8 +119,8 @@ class HackerNewsService:
         new_post_ids: List[int] = []
         
         try:
-            if source not in ("top", "new"):
-                raise ValueError("source must be 'top' or 'new'")
+            if source not in ("top", "new", "mixed"):
+                raise ValueError("source must be 'top', 'new', or 'mixed'")
 
             # Fetch story IDs with backfill from the selected source
             logger.info(f"Fetching up to {limit} {source} story IDs from Hacker News API")

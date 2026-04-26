@@ -274,8 +274,8 @@ def refresh():
     db = get_db()
     hn_service = get_hn_service(db)
     
-    # Fetch newest posts and backfill to avoid skipping recent unseen items
-    result = hn_service.fetch_and_store_posts(limit=50, source="new")
+    # Prioritize stories from the HN front page, then fill with newest unseen posts
+    result = hn_service.fetch_and_store_posts(limit=50, source="mixed")
     
     return jsonify({
         'status': 'success',

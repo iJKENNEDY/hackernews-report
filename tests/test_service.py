@@ -254,9 +254,72 @@ class TestServicePropertyBased:
             service = HackerNewsService(api_client=mock_api, database=db)
             result = service.fetch_and_store_posts(limit=2, source="new")
 
-            mock_api.get_new_stories.assert_called_once_with(limit=max(2 * 10, 2))
+            mock_api.get_new_stories.assert_called_once_with(limit=max(2 * 20, 500))
             mock_api.get_top_stories.assert_not_called()
             assert result.new_posts == 2
+            assert result.updated_posts == 0
+
+            db.close()
+        finally:
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    def test_fetch_and_store_posts_mixed_prioritizes_top_then_fills_new(self):
+        """Mixed source should prioritize top stories and then include newest."""
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path)
+            db.initialize_schema()
+
+            mock_api = Mock(spec=HNApiClient)
+            mock_api.get_top_stories.return_value = [100, 101]
+            mock_api.get_new_stories.return_value = [101, 102, 103]
+            mock_api.get_items_batch.return_value = [
+                Post(
+                    id=100,
+                    title="Top 100",
+                    author="t",
+                    score=20,
+                    url=None,
+                    created_at=300,
+                    type="story",
+                    category=Category.STORY,
+                    fetched_at=301,
+                ),
+                Post(
+                    id=101,
+                    title="Top 101",
+                    author="t",
+                    score=19,
+                    url=None,
+                    created_at=301,
+                    type="story",
+                    category=Category.STORY,
+                    fetched_at=302,
+                ),
+                Post(
+                    id=102,
+                    title="New 102",
+                    author="n",
+                    score=5,
+                    url=None,
+                    created_at=302,
+                    type="story",
+                    category=Category.STORY,
+                    fetched_at=303,
+                ),
+            ]
+
+            service = HackerNewsService(api_client=mock_api, database=db)
+            result = service.fetch_and_store_posts(limit=3, source="mixed")
+
+            scan_limit = max(3 * 20, 500)
+            mock_api.get_top_stories.assert_called_once_with(limit=scan_limit)
+            mock_api.get_new_stories.assert_called_once_with(limit=scan_limit)
+            mock_api.get_items_batch.assert_called_once_with([100, 101, 102])
+            assert result.new_posts == 3
             assert result.updated_posts == 0
 
             db.close()
@@ -317,7 +380,7 @@ class TestServicePropertyBased:
             result = service.fetch_and_store_posts(limit=limit)
 
             # Verify the API was called with the expanded scan limit for backfill
-            mock_api.get_top_stories.assert_called_once_with(limit=max(limit * 10, limit))
+            mock_api.get_top_stories.assert_called_once_with(limit=max(limit * 20, 500))
 
             # Verify we got at most 'limit' posts
             total_fetched = result.new_posts + result.updated_posts
